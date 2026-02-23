@@ -4,7 +4,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
-import { AuthControllerController } from './auth-controller/auth-controller.controller';
+import { AuthController } from './auth/auth.controller';
 
 @Module({
   imports: [
@@ -27,7 +27,7 @@ import { AuthControllerController } from './auth-controller/auth-controller.cont
     }),
     AuthModule,
   ],
-  controllers: [AppController, AuthControllerController],
+  controllers: [AppController, AuthController],
   providers: [AppService],
 })
 export class AppModule {}
