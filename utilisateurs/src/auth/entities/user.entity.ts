@@ -1,12 +1,11 @@
-import * as crypto from 'crypto';
 import { Entity, Column, PrimaryGeneratedColumn, OneToOne } from 'typeorm';
 import { Auth } from './auth.entity';
 import { Role } from './role.entity';
 
 @Entity()
 export class User {
-  @PrimaryGeneratedColumn()
-  id: crypto.UUID;
+  @PrimaryGeneratedColumn('uuid')
+  id: string;
 
   @Column()
   nom: string;

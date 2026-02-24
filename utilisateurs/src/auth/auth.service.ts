@@ -25,11 +25,17 @@ export class AuthService {
         return this.roleRepository.save(role)
     }
 
-    async findUsersByUsername(username: string): Promise<User> {
-        return this.userRepository.query('SELECT * FROM user WHERE username = ?', [username]);
+    async findUsersByUsername(username: string): Promise<User | null> {
+        return this.userRepository
+            .createQueryBuilder('user')
+            .where('user.username = :username', { username })
+            .getOne();
     }
 
-    async findAuthByUserId(userId: string): Promise<Auth> {
-        return this.authRepository.query('SELECT * FROM user WHERE userId = ?', [userId]);
+    async findAuthByUserId(userId: string): Promise<Auth | null> {
+        return this.authRepository
+            .createQueryBuilder('auth')
+            .where('auth.userId = :userId', { userId })
+            .getOne();
     }
 }
