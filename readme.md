@@ -1,10 +1,5 @@
 # WeFund
 
-## Lancer l'application
-```bash
-npm run start
-```
-
 ## Démarrer la base de données
 
 ```bash
@@ -28,6 +23,3 @@ docker compose logs -f postgres
 ```bash
 docker compose down
 ```
-
-
-
