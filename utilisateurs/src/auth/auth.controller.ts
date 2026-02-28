@@ -1,5 +1,6 @@
-import { Body, Controller, Post, HttpCode, HttpStatus, ConflictException, UnauthorizedException, NotFoundException, InternalServerErrorException, BadRequestException } from '@nestjs/common';
+import { Body, Controller, Post, Get, Request, UseGuards, HttpCode, HttpStatus, ConflictException, UnauthorizedException, NotFoundException, InternalServerErrorException } from '@nestjs/common';
 import { AuthService } from './auth.service';
+import { AuthGuard } from './auth.guard';
 import { CreateUserDto } from './dtos/createuserdto';
 import { LoginUserDto } from './dtos/loginuserdto';
 
@@ -60,29 +61,13 @@ export class AuthController {
     @HttpCode(HttpStatus.OK)
     async postLogin(@Body() loginUserDto: LoginUserDto) {
         try {
-            let user = await this.authService.findUsersByUsername(loginUserDto.username);
-
-            if (!user) {
-                throw new NotFoundException('Username not found');
-            }
-            let auth = await this.authService.findAuthByUserId(user.id);
-
-            if (!auth) {
-                throw new InternalServerErrorException('Authentication data not found');
-            }
-
-            if (auth.password !== loginUserDto.password) {
-                throw new UnauthorizedException('Password incorrect');
-            }
+            const result = await this.authService.signIn(loginUserDto.username, loginUserDto.password);
 
             return {
                 statusCode: HttpStatus.OK,
                 message: 'Login successful',
                 data: {
-                    id: user.id,
-                    nom: user.nom,
-                    prenom: user.prenom,
-                    username: user.username,
+                    access_token: result.access_token,
                 },
                 timestamp: new Date().toISOString()
             };
@@ -96,5 +81,11 @@ export class AuthController {
             
             throw new InternalServerErrorException('An unexpected error occurred during login');
         }
+    }
+
+    @UseGuards(AuthGuard)
+    @Get('profile')
+    getProfile(@Request() req) {
+        return req.user; 
     }
 }
