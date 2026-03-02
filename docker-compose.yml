@@ -4,7 +4,7 @@ services:
     container_name: we-fund-db
     restart: unless-stopped
     ports:
-      - "5400:5432"
+      - "5432:5432"
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: password
