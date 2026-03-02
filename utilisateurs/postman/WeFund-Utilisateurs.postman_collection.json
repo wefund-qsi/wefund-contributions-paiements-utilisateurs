@@ -1,0 +1,526 @@
+{
+  "info": {
+    "_postman_id": "wefund-utilisateurs-collection",
+    "name": "WeFund - Utilisateurs API",
+    "description": "Collection complète du microservice utilisateurs WeFund.\n\nRoutes disponibles :\n- GET  /             → Health check\n- POST /auth/signup  → Inscription\n- POST /auth/login   → Connexion (retourne un JWT)\n- GET  /auth/profile → Profil (protégé JWT)",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:3000",
+      "type": "string"
+    },
+    {
+      "key": "access_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "test_username",
+      "value": "testuser_postman",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Health Check",
+      "item": [
+        {
+          "name": "GET / - Hello World",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/",
+              "host": ["{{base_url}}"],
+              "path": [""]
+            },
+            "description": "Vérifie que le serveur est bien démarré."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Réponse Hello World', function () {",
+                  "  pm.expect(pm.response.text()).to.equal('Hello World!');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Signup",
+          "item": [
+            {
+              "name": "POST /auth/signup - Succès (CONTRIBUTEUR)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  { "key": "Content-Type", "value": "application/json" }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"prenom\": \"Jean\",\n  \"nom\": \"Dupont\",\n  \"username\": \"{{test_username}}\",\n  \"password\": \"Password123!\",\n  \"role\": \"CONTRIBUTEUR\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/auth/signup",
+                  "host": ["{{base_url}}"],
+                  "path": ["auth", "signup"]
+                },
+                "description": "Crée un nouvel utilisateur avec le rôle CONTRIBUTEUR."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status 201', function () {",
+                      "  pm.response.to.have.status(201);",
+                      "});",
+                      "",
+                      "pm.test('Message de succès', function () {",
+                      "  const json = pm.response.json();",
+                      "  pm.expect(json.message).to.equal('User, auth and role created successfully');",
+                      "});",
+                      "",
+                      "pm.test('statusCode vaut 201', function () {",
+                      "  const json = pm.response.json();",
+                      "  pm.expect(json.statusCode).to.equal(201);",
+                      "});",
+                      "",
+                      "pm.test('data contient id, nom, prenom, username, role', function () {",
+                      "  const data = pm.response.json().data;",
+                      "  pm.expect(data).to.have.property('id');",
+                      "  pm.expect(data).to.have.property('nom');",
+                      "  pm.expect(data).to.have.property('prenom');",
+                      "  pm.expect(data).to.have.property('username');",
+                      "  pm.expect(data).to.have.property('role');",
+                      "});",
+                      "",
+                      "pm.test('role est CONTRIBUTEUR', function () {",
+                      "  const data = pm.response.json().data;",
+                      "  pm.expect(data.role).to.equal('CONTRIBUTEUR');",
+                      "});",
+                      "",
+                      "pm.test('timestamp présent', function () {",
+                      "  const json = pm.response.json();",
+                      "  pm.expect(json).to.have.property('timestamp');",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "POST /auth/signup - Succès (PORTEUR DE PROJET)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  { "key": "Content-Type", "value": "application/json" }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"prenom\": \"Marie\",\n  \"nom\": \"Martin\",\n  \"username\": \"porteur_postman\",\n  \"password\": \"Password123!\",\n  \"role\": \"PORTEUR DE PROJET\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/auth/signup",
+                  "host": ["{{base_url}}"],
+                  "path": ["auth", "signup"]
+                },
+                "description": "Crée un utilisateur avec le rôle PORTEUR DE PROJET."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status 201', function () {",
+                      "  pm.response.to.have.status(201);",
+                      "});",
+                      "",
+                      "pm.test('role est PORTEUR DE PROJET', function () {",
+                      "  const data = pm.response.json().data;",
+                      "  pm.expect(data.role).to.equal('PORTEUR DE PROJET');",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "POST /auth/signup - Succès (ADMINISTRATEUR)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  { "key": "Content-Type", "value": "application/json" }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"prenom\": \"Admin\",\n  \"nom\": \"System\",\n  \"username\": \"admin_postman\",\n  \"password\": \"AdminPass123!\",\n  \"role\": \"ADMINISTRATEUR\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/auth/signup",
+                  "host": ["{{base_url}}"],
+                  "path": ["auth", "signup"]
+                },
+                "description": "Crée un utilisateur avec le rôle ADMINISTRATEUR."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status 201', function () {",
+                      "  pm.response.to.have.status(201);",
+                      "});",
+                      "",
+                      "pm.test('role est ADMINISTRATEUR', function () {",
+                      "  const data = pm.response.json().data;",
+                      "  pm.expect(data.role).to.equal('ADMINISTRATEUR');",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "POST /auth/signup - Succès (VISITEUR)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  { "key": "Content-Type", "value": "application/json" }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"prenom\": \"Visiteur\",\n  \"nom\": \"Test\",\n  \"username\": \"visiteur_postman\",\n  \"password\": \"Visit123!\",\n  \"role\": \"VISITEUR\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/auth/signup",
+                  "host": ["{{base_url}}"],
+                  "path": ["auth", "signup"]
+                },
+                "description": "Crée un utilisateur avec le rôle VISITEUR."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status 201', function () {",
+                      "  pm.response.to.have.status(201);",
+                      "});",
+                      "",
+                      "pm.test('role est VISITEUR', function () {",
+                      "  const data = pm.response.json().data;",
+                      "  pm.expect(data.role).to.equal('VISITEUR');",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Login",
+          "item": [
+            {
+              "name": "POST /auth/login - Succès",
+              "request": {
+                "method": "POST",
+                "header": [
+                  { "key": "Content-Type", "value": "application/json" }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"username\": \"{{test_username}}\",\n  \"password\": \"Password123!\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/auth/login",
+                  "host": ["{{base_url}}"],
+                  "path": ["auth", "login"]
+                },
+                "description": "Connexion avec des identifiants valides. Sauvegarde automatiquement le token JWT dans la variable `access_token`."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status 200', function () {",
+                      "  pm.response.to.have.status(200);",
+                      "});",
+                      "",
+                      "pm.test('Message de succès', function () {",
+                      "  const json = pm.response.json();",
+                      "  pm.expect(json.message).to.equal('Login successful');",
+                      "});",
+                      "",
+                      "pm.test('statusCode vaut 200', function () {",
+                      "  const json = pm.response.json();",
+                      "  pm.expect(json.statusCode).to.equal(200);",
+                      "});",
+                      "",
+                      "pm.test('access_token présent dans data', function () {",
+                      "  const data = pm.response.json().data;",
+                      "  pm.expect(data).to.have.property('access_token');",
+                      "  pm.expect(data.access_token).to.be.a('string').and.not.empty;",
+                      "});",
+                      "",
+                      "pm.test('access_token est un JWT valide (3 segments)', function () {",
+                      "  const token = pm.response.json().data.access_token;",
+                      "  pm.expect(token.split('.').length).to.equal(3);",
+                      "});",
+                      "",
+                      "// Sauvegarde du token pour les requêtes suivantes",
+                      "const token = pm.response.json().data?.access_token;",
+                      "if (token) {",
+                      "  pm.collectionVariables.set('access_token', token);",
+                      "  console.log('Token sauvegardé dans access_token');",
+                      "}"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "POST /auth/login - Mauvais mot de passe",
+              "request": {
+                "method": "POST",
+                "header": [
+                  { "key": "Content-Type", "value": "application/json" }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"username\": \"{{test_username}}\",\n  \"password\": \"mauvais_mot_de_passe\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/auth/login",
+                  "host": ["{{base_url}}"],
+                  "path": ["auth", "login"]
+                },
+                "description": "Tentative de connexion avec un mot de passe incorrect. Doit retourner 401."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status 401 Unauthorized', function () {",
+                      "  pm.response.to.have.status(401);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "POST /auth/login - Utilisateur inexistant",
+              "request": {
+                "method": "POST",
+                "header": [
+                  { "key": "Content-Type", "value": "application/json" }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"username\": \"utilisateur_qui_nexiste_pas\",\n  \"password\": \"Password123!\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/auth/login",
+                  "host": ["{{base_url}}"],
+                  "path": ["auth", "login"]
+                },
+                "description": "Tentative de connexion avec un username inexistant. Doit retourner 401."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status 401 Unauthorized', function () {",
+                      "  pm.response.to.have.status(401);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Profile",
+          "item": [
+            {
+              "name": "GET /auth/profile - Succès (token valide)",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{access_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/auth/profile",
+                  "host": ["{{base_url}}"],
+                  "path": ["auth", "profile"]
+                },
+                "description": "Récupère le profil de l'utilisateur connecté. Utilise le token sauvegardé lors du login."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status 200', function () {",
+                      "  pm.response.to.have.status(200);",
+                      "});",
+                      "",
+                      "pm.test('Payload JWT contient sub', function () {",
+                      "  const json = pm.response.json();",
+                      "  pm.expect(json).to.have.property('sub');",
+                      "});",
+                      "",
+                      "pm.test('Payload JWT contient username', function () {",
+                      "  const json = pm.response.json();",
+                      "  pm.expect(json).to.have.property('username');",
+                      "  pm.expect(json.username).to.equal(pm.collectionVariables.get('test_username'));",
+                      "});",
+                      "",
+                      "pm.test('Payload JWT contient role', function () {",
+                      "  const json = pm.response.json();",
+                      "  pm.expect(json).to.have.property('role');",
+                      "  const rolesValides = ['CONTRIBUTEUR', 'PORTEUR DE PROJET', 'ADMINISTRATEUR', 'VISITEUR'];",
+                      "  pm.expect(rolesValides).to.include(json.role);",
+                      "});",
+                      "",
+                      "pm.test('Payload JWT contient iat et exp', function () {",
+                      "  const json = pm.response.json();",
+                      "  pm.expect(json).to.have.property('iat');",
+                      "  pm.expect(json).to.have.property('exp');",
+                      "});",
+                      "",
+                      "pm.test('Token non expiré', function () {",
+                      "  const exp = pm.response.json().exp;",
+                      "  pm.expect(exp * 1000).to.be.above(Date.now());",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "GET /auth/profile - Sans token (401)",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/auth/profile",
+                  "host": ["{{base_url}}"],
+                  "path": ["auth", "profile"]
+                },
+                "description": "Accès au profil sans header Authorization. Doit retourner 401."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status 401 sans token', function () {",
+                      "  pm.response.to.have.status(401);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "GET /auth/profile - Token invalide (401)",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer token.invalide.ici"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/auth/profile",
+                  "host": ["{{base_url}}"],
+                  "path": ["auth", "profile"]
+                },
+                "description": "Accès au profil avec un token JWT malformé. Doit retourner 401."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status 401 token invalide', function () {",
+                      "  pm.response.to.have.status(401);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "GET /auth/profile - Token Bearer manquant (401)",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "{{access_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/auth/profile",
+                  "host": ["{{base_url}}"],
+                  "path": ["auth", "profile"]
+                },
+                "description": "Token envoyé sans le préfixe 'Bearer '. Doit retourner 401."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status 401 sans préfixe Bearer', function () {",
+                      "  pm.response.to.have.status(401);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
