@@ -24,11 +24,11 @@
 ## ✅ Checklist — Fonctionnalités (User Stories)
 
 ### 👤 Gestion des utilisateurs
-- [ ] **US6** — Créer un compte utilisateur (inscription)
-- [ ] **US7** — S'authentifier (login / JWT)
-- [ ] Hachage sécurisé des mots de passe (bcrypt ou argon2)
-- [ ] Middleware d'authentification (guard JWT)
-- [ ] Gestion des rôles : `contributeur`, `porteur_de_projet`, `administrateur`
+- [X] **US6** — Créer un compte utilisateur (inscription)
+- [X] **US7** — S'authentifier (login / JWT)
+- [X] Hachage sécurisé des mots de passe (bcrypt ou argon2)
+- [X] Middleware d'authentification (guard JWT)
+- [X] Gestion des rôles : `contributeur`, `porteur_de_projet`, `administrateur`
 
 ### 💰 Contributions
 - [ ] **US1** — Financer une campagne (créer une contribution)
