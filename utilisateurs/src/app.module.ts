@@ -5,6 +5,7 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
 import { AuthController } from './auth/auth.controller';
+import { ContributionModule } from './contribution/contribution.module';
 
 @Module({
   imports: [
@@ -26,6 +27,7 @@ import { AuthController } from './auth/auth.controller';
       }),
     }),
     AuthModule,
+    ContributionModule,
   ],
   controllers: [AppController, AuthController],
   providers: [AppService],
