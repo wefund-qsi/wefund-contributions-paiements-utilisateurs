@@ -1,6 +1,8 @@
-import { Entity, Column, PrimaryGeneratedColumn, OneToOne } from 'typeorm';
+import { Entity, Column, PrimaryGeneratedColumn, OneToOne, OneToMany } from 'typeorm';
 import { Auth } from './auth.entity';
 import { Role } from './role.entity';
+import { Contribution } from '../../contribution/entities/contribution.entity';
+import { Projet } from 'src/contribution/entities/projet.entity';
 
 @Entity()
 export class User {
@@ -21,4 +23,10 @@ export class User {
 
   @OneToOne(() => Role, (role) => role.user)
   role: Role;
+
+  @OneToMany(() => Contribution, (contribution) => contribution.contributeur)
+  contributions: Contribution[];
+
+  @OneToMany(() => Projet, (projet) => projet.porteurProjet)
+  projets: Projet[];
 }
