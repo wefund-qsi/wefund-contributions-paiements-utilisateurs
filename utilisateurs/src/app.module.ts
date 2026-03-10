@@ -6,6 +6,7 @@ import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
 import { AuthController } from './auth/auth.controller';
 import { ContributionModule } from './contribution/contribution.module';
+import { PaymentModule } from './payment/payment.module';
 
 @Module({
   imports: [
@@ -28,6 +29,7 @@ import { ContributionModule } from './contribution/contribution.module';
     }),
     AuthModule,
     ContributionModule,
+    PaymentModule,
   ],
   controllers: [AppController, AuthController],
   providers: [AppService],
