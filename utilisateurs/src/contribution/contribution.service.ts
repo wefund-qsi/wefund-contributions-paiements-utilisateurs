@@ -23,11 +23,29 @@ export class ContributionService {
         private readonly userRepository: Repository<User>,
     ) {}
 
-    async create(userId: string, dto: CreateContributionDto): Promise<Contribution> {
-        const campagne = await this.campagneRepository.findOne({ where: { id: dto.campagneId } });
-        if (!campagne) {
-            throw new NotFoundException(`Campagne ${dto.campagneId} introuvable`);
+    private async findOrMockCampagne(campagneId: number): Promise<Campagne> {
+        const existingCampagne = await this.campagneRepository.findOne({ where: { id: campagneId } });
+        if (existingCampagne) {
+            return existingCampagne;
         }
+
+        if (process.env.MOCK_CONTRIBUTION_CAMPAIGN !== 'true') {
+            throw new NotFoundException(`Campagne ${campagneId} introuvable`);
+        }
+
+        // Local-only fallback to decouple contribution tests from the campaigns microservice.
+        const mockedCampagne = this.campagneRepository.create({
+            id: campagneId,
+            nom: `Mock campagne ${campagneId}`,
+            statut: 'active',
+            dateEcheance: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+        });
+
+        return this.campagneRepository.save(mockedCampagne);
+    }
+
+    async create(userId: string, dto: CreateContributionDto): Promise<Contribution> {
+        const campagne = await this.findOrMockCampagne(dto.campagneId);
         if (campagne.statut !== 'active') {
             throw new BadRequestException('La campagne n\'est pas active');
         }

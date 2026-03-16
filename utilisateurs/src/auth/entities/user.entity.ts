@@ -2,7 +2,7 @@ import { Entity, Column, PrimaryGeneratedColumn, OneToOne, OneToMany } from 'typ
 import { Auth } from './auth.entity';
 import { Role } from './role.entity';
 import { Contribution } from '../../contribution/entities/contribution.entity';
-import { Projet } from 'src/contribution/entities/projet.entity';
+import { Projet } from '../../contribution/entities/projet.entity';
 
 @Entity()
 export class User {
