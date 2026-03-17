@@ -1,5 +1,11 @@
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
+import { AppModule } from './app.module';
+
+async function bootstrap() {
+  const app = await NestFactory.create(AppModule, { rawBody: true });
+  app.useGlobalPipes(new ValidationPipe({ whitelist: true }));
+  app.enableCors({ origin: 'http://localhost:5173' });
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 
