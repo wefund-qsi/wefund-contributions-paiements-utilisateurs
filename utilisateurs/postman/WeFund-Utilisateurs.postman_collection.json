@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "wefund-utilisateurs-collection",
     "name": "WeFund - Utilisateurs API",
-    "description": "Collection complète du microservice utilisateurs WeFund.\n\nRoutes disponibles :\n- GET  /             → Health check\n- POST /auth/signup  → Inscription\n- POST /auth/login   → Connexion (retourne un JWT)\n- GET  /auth/profile → Profil (protégé JWT)",
+    "description": "Collection complète du microservice utilisateurs WeFund.\n\nRoutes disponibles :\n- GET  /                    → Health check\n- POST /auth/signup         → Inscription\n- POST /auth/login          → Connexion (retourne un JWT)\n- GET  /auth/profile        → Profil (protégé JWT)\n- POST /contribution        → Créer une contribution (JWT requis)\n- GET  /contribution        → Lister mes contributions (JWT requis)\n- PATCH /contribution/:id   → Modifier le montant (JWT requis)\n- DELETE /contribution/:id  → Annuler une contribution (JWT requis)\n\nDocumentation Swagger : http://localhost:3000/api/docs",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -19,6 +19,16 @@
     {
       "key": "test_username",
       "value": "testuser_postman",
+      "type": "string"
+    },
+    {
+      "key": "contribution_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "campagne_id",
+      "value": "1",
       "type": "string"
     }
   ],
@@ -517,6 +527,437 @@
                   }
                 }
               ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Contribution",
+      "item": [
+        {
+          "name": "POST /contribution - Succès (campagne active)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"campagneId\": {{campagne_id}},\n  \"montant\": 50\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/contribution",
+              "host": ["{{base_url}}"],
+              "path": ["contribution"]
+            },
+            "description": "Crée une contribution sur une campagne active. Sauvegarde l'id retourné dans `contribution_id`."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', function () {",
+                  "  pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "pm.test('Message de succès', function () {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json.message).to.equal('Contribution créée avec succès');",
+                  "});",
+                  "",
+                  "pm.test('data contient id et montant', function () {",
+                  "  const data = pm.response.json().data;",
+                  "  pm.expect(data).to.have.property('id');",
+                  "  pm.expect(data).to.have.property('montant');",
+                  "  pm.expect(data.montant).to.equal(50);",
+                  "});",
+                  "",
+                  "pm.test('data contient campagne et contributeur', function () {",
+                  "  const data = pm.response.json().data;",
+                  "  pm.expect(data).to.have.property('campagne');",
+                  "  pm.expect(data).to.have.property('contributeur');",
+                  "});",
+                  "",
+                  "pm.test('timestamp présent', function () {",
+                  "  pm.expect(pm.response.json()).to.have.property('timestamp');",
+                  "});",
+                  "",
+                  "// Sauvegarde de l'id pour les requêtes suivantes",
+                  "const id = pm.response.json().data?.id;",
+                  "if (id) {",
+                  "  pm.collectionVariables.set('contribution_id', id);",
+                  "  console.log('contribution_id sauvegardé :', id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /contribution - Sans token (401)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"campagneId\": {{campagne_id}},\n  \"montant\": 50\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/contribution",
+              "host": ["{{base_url}}"],
+              "path": ["contribution"]
+            },
+            "description": "Tentative sans JWT. Doit retourner 401."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 401 sans token', function () {",
+                  "  pm.response.to.have.status(401);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /contribution - Montant invalide (400)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"campagneId\": {{campagne_id}},\n  \"montant\": -10\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/contribution",
+              "host": ["{{base_url}}"],
+              "path": ["contribution"]
+            },
+            "description": "Montant négatif. La validation doit rejeter avec 400."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400 montant invalide', function () {",
+                  "  pm.response.to.have.status(400);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /contribution - Campagne inexistante (404)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"campagneId\": 999999,\n  \"montant\": 50\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/contribution",
+              "host": ["{{base_url}}"],
+              "path": ["contribution"]
+            },
+            "description": "Campagne inexistante. Doit retourner 404."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 404 campagne inexistante', function () {",
+                  "  pm.response.to.have.status(404);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /contribution - Mes contributions",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/contribution",
+              "host": ["{{base_url}}"],
+              "path": ["contribution"]
+            },
+            "description": "Retourne toutes les contributions de l'utilisateur connecté."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Message correct', function () {",
+                  "  pm.expect(pm.response.json().message).to.equal('Contributions récupérées avec succès');",
+                  "});",
+                  "",
+                  "pm.test('data est un tableau', function () {",
+                  "  pm.expect(pm.response.json().data).to.be.an('array');",
+                  "});",
+                  "",
+                  "pm.test('timestamp présent', function () {",
+                  "  pm.expect(pm.response.json()).to.have.property('timestamp');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /contribution - Sans token (401)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/contribution",
+              "host": ["{{base_url}}"],
+              "path": ["contribution"]
+            },
+            "description": "Sans JWT. Doit retourner 401."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 401 sans token', function () {",
+                  "  pm.response.to.have.status(401);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "PATCH /contribution/:id - Modifier le montant",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"montant\": 150\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/contribution/{{contribution_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["contribution", "{{contribution_id}}"]
+            },
+            "description": "Modifie le montant de la contribution créée précédemment. Utilise `contribution_id` sauvegardé."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Message correct', function () {",
+                  "  pm.expect(pm.response.json().message).to.equal('Contribution mise à jour avec succès');",
+                  "});",
+                  "",
+                  "pm.test('Nouveau montant est 150', function () {",
+                  "  pm.expect(pm.response.json().data.montant).to.equal(150);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "PATCH /contribution/:id - Montant invalide (400)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"montant\": 0\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/contribution/{{contribution_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["contribution", "{{contribution_id}}"]
+            },
+            "description": "Montant à zéro. Validation doit rejeter avec 400."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400 montant invalide', function () {",
+                  "  pm.response.to.have.status(400);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "PATCH /contribution/:id - Contribution inexistante (404)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"montant\": 100\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/contribution/999999",
+              "host": ["{{base_url}}"],
+              "path": ["contribution", "999999"]
+            },
+            "description": "ID inexistant. Doit retourner 404."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 404 contribution inexistante', function () {",
+                  "  pm.response.to.have.status(404);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "DELETE /contribution/:id - Annuler la contribution",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/contribution/{{contribution_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["contribution", "{{contribution_id}}"]
+            },
+            "description": "Annule la contribution créée précédemment. Utilise `contribution_id` sauvegardé."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Message correct', function () {",
+                  "  pm.expect(pm.response.json().message).to.equal('Contribution annulée avec succès');",
+                  "});",
+                  "",
+                  "pm.test('Pas de data dans la réponse', function () {",
+                  "  pm.expect(pm.response.json()).to.not.have.property('data');",
+                  "});",
+                  "",
+                  "// Réinitialise contribution_id",
+                  "pm.collectionVariables.set('contribution_id', '');"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "DELETE /contribution/:id - Contribution inexistante (404)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/contribution/999999",
+              "host": ["{{base_url}}"],
+              "path": ["contribution", "999999"]
+            },
+            "description": "ID inexistant. Doit retourner 404."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 404 contribution inexistante', function () {",
+                  "  pm.response.to.have.status(404);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "DELETE /contribution/:id - Sans token (401)",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/contribution/{{contribution_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["contribution", "{{contribution_id}}"]
+            },
+            "description": "Sans JWT. Doit retourner 401."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 401 sans token', function () {",
+                  "  pm.response.to.have.status(401);",
+                  "});"
+                ]
+              }
             }
           ]
         }
