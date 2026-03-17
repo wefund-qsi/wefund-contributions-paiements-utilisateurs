@@ -1,0 +1,47 @@
+databases:
+  - name: wefund-db
+    databaseName: wefund_db
+    user: postgres
+    # Le tier "free" a été supprimé par Render en sept. 2024.
+    # "starter" est le minimum (~$7/mois).
+    plan: starter
+
+services:
+  - type: web
+    name: wefund-utilisateurs
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    plan: free
+    envVars:
+      - key: DATABASE_HOST
+        fromDatabase:
+          name: wefund-db
+          property: host
+      - key: DATABASE_PORT
+        fromDatabase:
+          name: wefund-db
+          property: port
+      - key: DATABASE_USER
+        fromDatabase:
+          name: wefund-db
+          property: user
+      - key: DATABASE_PASSWORD
+        fromDatabase:
+          name: wefund-db
+          property: password
+      - key: DATABASE_NAME
+        fromDatabase:
+          name: wefund-db
+          property: database
+      - key: NODE_ENV
+        value: production
+      - key: CORS_ORIGIN
+        # À définir manuellement dans le dashboard Render
+        # Exemple : https://wefund-frontend.onrender.com
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: STRIPE_SECRET_KEY
+        sync: false
+      - key: STRIPE_WEBHOOK_SECRET
+        sync: false
