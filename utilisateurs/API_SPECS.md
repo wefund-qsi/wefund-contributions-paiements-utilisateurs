@@ -33,7 +33,7 @@
     "nom": "string",
     "username": "string",
     "password": "string",
-    "role": "string: {'PORTEUR DE PROJET' | 'CONTRIBUTEUR' | 'ADMINISTRATEUR' | 'VISITEUR'}"
+    "role": "string: {'ADMINISTRATEUR' | 'USER'}"
 }
 ```
 
