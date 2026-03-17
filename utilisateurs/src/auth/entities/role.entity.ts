@@ -2,7 +2,7 @@
 import { Entity, Column, OneToOne, JoinColumn, PrimaryGeneratedColumn } from 'typeorm';
 import { User } from './user.entity';
 
-export type RoleEnum = 'PORTEUR DE PROJET' | 'CONTRIBUTEUR' | 'ADMINISTRATEUR' | 'VISITEUR';
+export type RoleEnum = 'ADMINISTRATEUR' | 'USER';
 
 @Entity()
 export class Role {
@@ -11,8 +11,8 @@ export class Role {
 
   @Column({
     type: 'enum',
-    enum: ['PORTEUR DE PROJET', 'CONTRIBUTEUR', 'ADMINISTRATEUR', 'VISITEUR'],
-    default: 'VISITEUR'
+    enum: ['ADMINISTRATEUR', 'USER'],
+    default: 'USER'
   })
   role: RoleEnum;
 

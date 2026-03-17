@@ -18,6 +18,6 @@ export class CreateUserDto {
     @IsNotEmpty()
     password: string
 
-    @IsIn(['PORTEUR DE PROJET', 'CONTRIBUTEUR', 'ADMINISTRATEUR', 'VISITEUR'])
+    @IsIn(['ADMINISTRATEUR', 'USER'])
     role: RoleEnum
 }
