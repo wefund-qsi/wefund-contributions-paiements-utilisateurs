@@ -18,11 +18,11 @@ import { PaymentModule } from './payment/payment.module';
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({
         type: 'postgres',
-        host: process.env.DATABASE_HOST || 'localhost',
-        port: parseInt(process.env.DATABASE_PORT || '5432'),
-        username: process.env.DATABASE_USER || 'postgres',
-        password: process.env.DATABASE_PASSWORD || 'password',
-        database: process.env.DATABASE_NAME || 'wefund_db',
+        host: config.get<string>('DATABASE_HOST')  || 'localhost',
+        port: parseInt(config.get<string>('DATABASE_PORT') || '5432'),
+        username: config.get<string>('DATABASE_USER') || 'postgres',
+        password: config.get<string>('DATABASE_PASSWORD') || 'password',
+        database: config.get<string>('DATABASE_NAME') || 'wefund_db',
         entities: [__dirname + '/**/*.entity{.ts,.js}'],
         synchronize: true, // À désactiver en production
       }),
