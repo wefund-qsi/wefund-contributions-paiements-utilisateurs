@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { JwtModule } from '@nestjs/jwt';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ContributionController } from './contribution.controller';
 import { ContributionService } from './contribution.service';
 import { Contribution } from './entities/contribution.entity';
@@ -12,7 +13,14 @@ import { jwtConstants } from '../auth/constants';
 @Module({
     imports: [
         TypeOrmModule.forFeature([Contribution, Campagne, Projet, User]),
-        JwtModule.register({ secret: jwtConstants.secret, signOptions: { expiresIn: '1d' } }),
+        JwtModule.registerAsync({
+            imports: [ConfigModule],
+            inject: [ConfigService],
+            useFactory: (configService: ConfigService) => ({
+                secret: configService.get<string>('JWT_SECRET'),
+                signOptions: { expiresIn: '1d' },
+            }),
+        }),
     ],
     controllers: [ContributionController],
     providers: [ContributionService],
