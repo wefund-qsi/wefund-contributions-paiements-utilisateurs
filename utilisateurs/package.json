@@ -75,6 +75,10 @@
     "transform": {
       "^.+\\.(t|j)s$": "ts-jest"
     },
+    "moduleNameMapper": {
+      "@projet1/(.*)": "<rootDir>/../../../wefund-projects-service/src/$1"
+    },
+    "modulePaths": ["<rootDir>/../node_modules"],
     "collectCoverageFrom": [
       "**/*.(t|j)s"
     ],

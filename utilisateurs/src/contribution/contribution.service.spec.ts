@@ -1,179 +1,182 @@
 import { BadRequestException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { User } from '../auth/entities/user.entity';
-import { Campagne } from './entities/campagne.entity';
-import { Contribution } from './entities/contribution.entity';
 import { ContributionService } from './contribution.service';
+import { Contribution } from './entities/contribution.entity';
+import { CampagneEntity, StatutCampagne } from '@projet1/campagnes/domain/campagne.entity';
+import { User } from '../auth/entities/user.entity';
 
-const createRepositoryMock = () => ({
+const mockRepo = () => ({
   findOne: jest.fn(),
+  find: jest.fn(),
   create: jest.fn(),
   save: jest.fn(),
-  find: jest.fn(),
   remove: jest.fn(),
 });
 
 describe('ContributionService', () => {
   let service: ContributionService;
-  let contributionRepository: ReturnType<typeof createRepositoryMock>;
-  let campagneRepository: ReturnType<typeof createRepositoryMock>;
-  let userRepository: ReturnType<typeof createRepositoryMock>;
+  let contributionRepo: ReturnType<typeof mockRepo>;
+  let campagneRepo: ReturnType<typeof mockRepo>;
+  let userRepo: ReturnType<typeof mockRepo>;
+
+  const activeCampagne = { id: 'camp-uuid-1', statut: StatutCampagne.ACTIVE } as CampagneEntity;
+  const closedCampagne = { id: 'camp-uuid-2', statut: StatutCampagne.ECHOUEE } as CampagneEntity;
+  const user = { id: 'user-uuid-1' } as User;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         ContributionService,
-        {
-          provide: getRepositoryToken(Contribution),
-          useValue: createRepositoryMock(),
-        },
-        {
-          provide: getRepositoryToken(Campagne),
-          useValue: createRepositoryMock(),
-        },
-        {
-          provide: getRepositoryToken(User),
-          useValue: createRepositoryMock(),
-        },
+        { provide: getRepositoryToken(Contribution), useFactory: mockRepo },
+        { provide: getRepositoryToken(CampagneEntity), useFactory: mockRepo },
+        { provide: getRepositoryToken(User), useFactory: mockRepo },
       ],
     }).compile();
 
-    service = module.get<ContributionService>(ContributionService);
-    contributionRepository = module.get(getRepositoryToken(Contribution));
-    campagneRepository = module.get(getRepositoryToken(Campagne));
-    userRepository = module.get(getRepositoryToken(User));
-
-    delete process.env.MOCK_CONTRIBUTION_CAMPAIGN;
+    service = module.get(ContributionService);
+    contributionRepo = module.get(getRepositoryToken(Contribution));
+    campagneRepo = module.get(getRepositoryToken(CampagneEntity));
+    userRepo = module.get(getRepositoryToken(User));
   });
 
-  afterEach(() => {
-    delete process.env.MOCK_CONTRIBUTION_CAMPAIGN;
-    jest.clearAllMocks();
-  });
+  afterEach(() => jest.clearAllMocks());
 
-  it('should be defined', () => {
+  it('devrait être défini', () => {
     expect(service).toBeDefined();
   });
 
-  it('create success', async () => {
-    const dto = { campagneId: 1, montant: 50 };
-    const campagne = { id: 1, statut: 'active' } as Campagne;
-    const user = { id: 'user-1', username: 'alice' } as User;
-    const createdContribution = {
-      montant: 50,
-      campagne,
-      contributeur: user,
-      timestamp: new Date(),
-    } as Contribution;
-    const savedContribution = { id: 10, ...createdContribution } as Contribution;
+  // ── Story 1 : financer une campagne ─────────────────────────────────────────
+  describe('create', () => {
+    const dto = { campagneId: 'camp-uuid-1', montant: 100 };
 
-    campagneRepository.findOne.mockResolvedValue(campagne);
-    userRepository.findOne.mockResolvedValue(user);
-    contributionRepository.create.mockReturnValue(createdContribution);
-    contributionRepository.save.mockResolvedValue(savedContribution);
+    it('crée une contribution pour une campagne ACTIVE', async () => {
+      const contrib = { id: 'c-uuid-1', montant: 100 } as Contribution;
+      campagneRepo.findOne.mockResolvedValue(activeCampagne);
+      userRepo.findOne.mockResolvedValue(user);
+      contributionRepo.create.mockReturnValue(contrib);
+      contributionRepo.save.mockResolvedValue(contrib);
 
-    const result = await service.create('user-1', dto);
+      const result = await service.create('user-uuid-1', dto);
 
-    expect(campagneRepository.findOne).toHaveBeenCalledWith({ where: { id: 1 } });
-    expect(userRepository.findOne).toHaveBeenCalledWith({ where: { id: 'user-1' } });
-    expect(contributionRepository.create).toHaveBeenCalledWith(
-      expect.objectContaining({
-        montant: 50,
-        campagne,
-        contributeur: user,
-        timestamp: expect.any(Date),
-      }),
-    );
-    expect(contributionRepository.save).toHaveBeenCalledWith(createdContribution);
-    expect(result).toEqual(savedContribution);
-  });
-
-  it('create campagne inexistante', async () => {
-    campagneRepository.findOne.mockResolvedValue(null);
-
-    await expect(service.create('user-1', { campagneId: 1, montant: 50 })).rejects.toThrow(
-      new NotFoundException('Campagne 1 introuvable'),
-    );
-    expect(userRepository.findOne).not.toHaveBeenCalled();
-    expect(contributionRepository.save).not.toHaveBeenCalled();
-  });
-
-  it('create utilisateur introuvable', async () => {
-    const campagne = { id: 1, statut: 'active' } as Campagne;
-
-    campagneRepository.findOne.mockResolvedValue(campagne);
-    userRepository.findOne.mockResolvedValue(null);
-
-    await expect(service.create('user-1', { campagneId: 1, montant: 50 })).rejects.toThrow(
-      new NotFoundException('Utilisateur introuvable'),
-    );
-    expect(contributionRepository.save).not.toHaveBeenCalled();
-  });
-
-  it('update mauvais proprietaire', async () => {
-    const contribution = {
-      id: 5,
-      montant: 50,
-      contributeur: { id: 'other-user' },
-      campagne: { statut: 'active' },
-    } as Contribution;
-
-    contributionRepository.findOne.mockResolvedValue(contribution);
-
-    await expect(service.update('user-1', 5, { montant: 150 })).rejects.toThrow(
-      ForbiddenException,
-    );
-    expect(contributionRepository.save).not.toHaveBeenCalled();
-  });
-
-  it('update contribution inexistante', async () => {
-    contributionRepository.findOne.mockResolvedValue(null);
-
-    await expect(service.update('user-1', 5, { montant: 150 })).rejects.toThrow(
-      new NotFoundException('Contribution 5 introuvable'),
-    );
-    expect(contributionRepository.save).not.toHaveBeenCalled();
-  });
-
-  it('remove campagne inactive', async () => {
-    const contribution = {
-      id: 5,
-      montant: 50,
-      contributeur: { id: 'user-1' },
-      campagne: { statut: 'closed' },
-    } as Contribution;
-
-    contributionRepository.findOne.mockResolvedValue(contribution);
-
-    await expect(service.remove('user-1', 5)).rejects.toThrow(BadRequestException);
-    expect(contributionRepository.remove).not.toHaveBeenCalled();
-  });
-
-  it('remove mauvais proprietaire', async () => {
-    const contribution = {
-      id: 5,
-      montant: 50,
-      contributeur: { id: 'other-user' },
-      campagne: { statut: 'active' },
-    } as Contribution;
-
-    contributionRepository.findOne.mockResolvedValue(contribution);
-
-    await expect(service.remove('user-1', 5)).rejects.toThrow(ForbiddenException);
-    expect(contributionRepository.remove).not.toHaveBeenCalled();
-  });
-
-  it('findAllByUser success', async () => {
-    const contributions = [{ id: 1 }, { id: 2 }] as Contribution[];
-    contributionRepository.find.mockResolvedValue(contributions);
-
-    const result = await service.findAllByUser('user-1');
-
-    expect(contributionRepository.find).toHaveBeenCalledWith({
-      where: { contributeur: { id: 'user-1' } },
-      relations: ['campagne', 'campagne.projet'],
+      expect(campagneRepo.findOne).toHaveBeenCalledWith({ where: { id: 'camp-uuid-1' } });
+      expect(userRepo.findOne).toHaveBeenCalledWith({ where: { id: 'user-uuid-1' } });
+      expect(contributionRepo.save).toHaveBeenCalled();
+      expect(result).toEqual(contrib);
     });
-    expect(result).toEqual(contributions);
+
+    it('lève NotFoundException si la campagne est introuvable', async () => {
+      campagneRepo.findOne.mockResolvedValue(null);
+
+      await expect(service.create('user-uuid-1', dto)).rejects.toThrow(NotFoundException);
+      expect(contributionRepo.save).not.toHaveBeenCalled();
+    });
+
+    it('lève BadRequestException si la campagne n\'est pas ACTIVE (RG3)', async () => {
+      campagneRepo.findOne.mockResolvedValue(closedCampagne);
+
+      await expect(service.create('user-uuid-1', dto)).rejects.toThrow(BadRequestException);
+    });
+
+    it('lève NotFoundException si l\'utilisateur est introuvable', async () => {
+      campagneRepo.findOne.mockResolvedValue(activeCampagne);
+      userRepo.findOne.mockResolvedValue(null);
+
+      await expect(service.create('user-uuid-1', dto)).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  // ── Story 5 : modifier le montant ───────────────────────────────────────────
+  describe('update', () => {
+    const existingContrib = {
+      id: 'c-uuid-1',
+      montant: 50,
+      contributeur: user,
+      campagne: activeCampagne,
+    } as unknown as Contribution;
+
+    it('met à jour le montant si campagne ACTIVE et contributeur owner', async () => {
+      contributionRepo.findOne.mockResolvedValue(existingContrib);
+      contributionRepo.save.mockResolvedValue({ ...existingContrib, montant: 200 } as Contribution);
+
+      const result = await service.update('user-uuid-1', 'c-uuid-1', { montant: 200 });
+
+      expect(result.montant).toBe(200);
+    });
+
+    it('lève NotFoundException si la contribution est introuvable', async () => {
+      contributionRepo.findOne.mockResolvedValue(null);
+
+      await expect(service.update('user-uuid-1', 'c-uuid-X', { montant: 200 })).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+
+    it('lève ForbiddenException si l\'utilisateur n\'est pas le propriétaire', async () => {
+      contributionRepo.findOne.mockResolvedValue(existingContrib);
+
+      await expect(service.update('autre-user', 'c-uuid-1', { montant: 200 })).rejects.toThrow(
+        ForbiddenException,
+      );
+      expect(contributionRepo.save).not.toHaveBeenCalled();
+    });
+
+    it('lève BadRequestException si la campagne n\'est plus ACTIVE (RG3)', async () => {
+      const contrib = { ...existingContrib, campagne: closedCampagne } as unknown as Contribution;
+      contributionRepo.findOne.mockResolvedValue(contrib);
+
+      await expect(service.update('user-uuid-1', 'c-uuid-1', { montant: 200 })).rejects.toThrow(
+        BadRequestException,
+      );
+    });
+  });
+
+  // ── Story 4 / RG3 : annuler une contribution ────────────────────────────────
+  describe('remove', () => {
+    const existingContrib = {
+      id: 'c-uuid-1',
+      contributeur: user,
+      campagne: activeCampagne,
+    } as unknown as Contribution;
+
+    it('annule la contribution si campagne ACTIVE et owner', async () => {
+      contributionRepo.findOne.mockResolvedValue(existingContrib);
+      contributionRepo.remove.mockResolvedValue(existingContrib);
+
+      await expect(service.remove('user-uuid-1', 'c-uuid-1')).resolves.toBeUndefined();
+      expect(contributionRepo.remove).toHaveBeenCalledWith(existingContrib);
+    });
+
+    it('lève ForbiddenException si non propriétaire', async () => {
+      contributionRepo.findOne.mockResolvedValue(existingContrib);
+
+      await expect(service.remove('autre-user', 'c-uuid-1')).rejects.toThrow(ForbiddenException);
+      expect(contributionRepo.remove).not.toHaveBeenCalled();
+    });
+
+    it('lève BadRequestException si campagne non ACTIVE (RG3)', async () => {
+      const contrib = { ...existingContrib, campagne: closedCampagne } as unknown as Contribution;
+      contributionRepo.findOne.mockResolvedValue(contrib);
+
+      await expect(service.remove('user-uuid-1', 'c-uuid-1')).rejects.toThrow(BadRequestException);
+    });
+  });
+
+  // ── Story 2 : consulter ses contributions ───────────────────────────────────
+  describe('findAllByUser', () => {
+    it('retourne les contributions triées par date DESC', async () => {
+      const contributions = [{ id: 'c1' }, { id: 'c2' }] as Contribution[];
+      contributionRepo.find.mockResolvedValue(contributions);
+
+      const result = await service.findAllByUser('user-uuid-1');
+
+      expect(contributionRepo.find).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { contributeur: { id: 'user-uuid-1' } },
+          order: { createdAt: 'DESC' },
+        }),
+      );
+      expect(result).toHaveLength(2);
+    });
   });
 });

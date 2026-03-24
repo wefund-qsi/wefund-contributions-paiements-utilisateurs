@@ -28,7 +28,7 @@
     },
     {
       "key": "campagne_id",
-      "value": "1",
+      "value": "REMPLACER-PAR-UUID-CAMPAGNE-ACTIVE",
       "type": "string"
     },
     {
@@ -1182,6 +1182,120 @@
                   "  const json = pm.response.json();",
                   "  pm.expect(json).to.have.property('received');",
                   "  pm.expect(json.received).to.equal(false);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Campagnes — Admin (Story 8)",
+      "item": [
+        {
+          "name": "PATCH /api/campagnes/:id/moderer - Accepter (ADMINISTRATEUR)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"decision\": \"ACCEPTEE\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/campagnes/{{campagne_id}}/moderer",
+              "host": ["{{base_url}}"],
+              "path": ["api", "campagnes", "{{campagne_id}}", "moderer"]
+            },
+            "description": "Story 8 / RG6 — Accepte une campagne EN_ATTENTE → statut passe à ACTIVE.\n\nPré-requis : se connecter avec un compte ADMINISTRATEUR et renseigner `campagne_id` avec l'UUID d'une campagne EN_ATTENTE."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('statut passe à ACTIVE', function () {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json.statut).to.equal('ACTIVE');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "PATCH /api/campagnes/:id/moderer - Refuser (ADMINISTRATEUR)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"decision\": \"REFUSEE\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/campagnes/{{campagne_id}}/moderer",
+              "host": ["{{base_url}}"],
+              "path": ["api", "campagnes", "{{campagne_id}}", "moderer"]
+            },
+            "description": "Story 8 / RG6 — Refuse une campagne EN_ATTENTE → statut passe à REFUSEE."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('statut passe à REFUSEE', function () {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json.statut).to.equal('REFUSEE');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "PATCH /api/campagnes/:id/moderer - 403 si non admin",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"decision\": \"ACCEPTEE\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/campagnes/{{campagne_id}}/moderer",
+              "host": ["{{base_url}}"],
+              "path": ["api", "campagnes", "{{campagne_id}}", "moderer"]
+            },
+            "description": "Doit retourner 403 si le JWT appartient à un CONTRIBUTEUR (non admin)."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 403', function () {",
+                  "  pm.response.to.have.status(403);",
                   "});"
                 ]
               }
