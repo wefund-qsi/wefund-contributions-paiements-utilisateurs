@@ -15,7 +15,7 @@ async function bootstrap() {
     options: {
       client: {
         clientId: 'wefund-contributions-service',
-        brokers: [(process.env.KAFKA_BROKERS || 'redpanda:9092')],
+        brokers: [(process.env.KAFKA_BROKERS || 'localhost:19092')],
       },
       consumer: {
         groupId: 'wefund-contributions-consumer',

@@ -32,7 +32,7 @@ import { CampagnesModule } from './campagnes/campagnes.module';
         username: config.get<string>('DATABASE_USER') || 'postgres',
         password: config.get<string>('DATABASE_PASSWORD') || 'password',
         database: config.get<string>('DATABASE_NAME') || 'wefund_db',
-        entities: [__dirname + '/**/*.entity{.ts,.js}'],
+        autoLoadEntities: true,
         synchronize: true,
       }),
     }),

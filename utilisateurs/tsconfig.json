@@ -13,7 +13,9 @@
     "outDir": "./dist",
     "baseUrl": "./",
     "paths": {
-      "@projet1/*": ["../../wefund-projects-service/src/*"]
+      "@projet1/*": ["../../wefund-projects-service/src/*"],
+      "typeorm": ["node_modules/typeorm"],
+      "typeorm/*": ["node_modules/typeorm/*"]
     },
     "incremental": true,
     "skipLibCheck": true,
@@ -21,7 +23,6 @@
     "forceConsistentCasingInFileNames": true,
     "noImplicitAny": false,
     "strictBindCallApply": false,
-    "noFallthroughCasesInSwitch": false,
-    "isolatedModules": true
+    "noFallthroughCasesInSwitch": false
   }
 }
