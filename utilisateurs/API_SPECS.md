@@ -9,12 +9,15 @@
     - `POST /auth/signup`
   - `POST /auth/login`
   - `GET /`
+    - `POST /payment/webhook`
 - Routes protégées
     - `GET /auth/profile`
     - `POST /contribution`
     - `GET /contribution`
     - `PATCH /contribution/:id`
     - `DELETE /contribution/:id`
+    - `POST /payment/intent`
+    - `GET /payment/contributions`
 
 ## Modèles JSON
 
@@ -33,7 +36,7 @@
     "nom": "string",
     "username": "string",
     "password": "string",
-    "role": "string: {'PORTEUR DE PROJET' | 'CONTRIBUTEUR' | 'ADMINISTRATEUR' | 'VISITEUR'}"
+    "role": "string: {'ADMINISTRATEUR' | 'USER'}"
 }
 ```
 
@@ -89,6 +92,15 @@
 }
 ```
 
+### CreatePaymentIntentRequest
+```json
+{
+    "contributionId": 1,
+    "montant": 50,
+    "campagneId": 1
+}
+```
+
 ### ContributionResult
 ```json
 {
@@ -133,6 +145,37 @@
 }
 ```
 
+### PaymentIntentResult
+```json
+{
+    "clientSecret":"<stripe_client_secret>",
+    "transactionId":"<uuid>"
+}
+```
+
+### TransactionListResult
+```json
+[
+    {
+        "id":"<uuid>",
+        "paymentIntentId":"<stripe_payment_intent_id>",
+        "montant":50,
+        "statut":"pending",
+        "contributionId":1,
+        "contributeurId":"<uuid>",
+        "createdAt":"<timestamp>",
+        "updatedAt":"<timestamp>"
+    }
+]
+```
+
+### WebhookResult
+```json
+{
+    "received": true
+}
+```
+
 ## Endpoints
 
 ### `POST /auth/signup`
@@ -145,7 +188,7 @@ Request body:
     "nom": "duval",
     "username": "alice",
     "password": "secret",
-    "role": "CONTRIBUTEUR"
+    "role": "USER"
 }
 ```
 
@@ -160,7 +203,7 @@ Responses:
         "nom":"duval",
         "prenom":"alice",
         "username":"alice",
-        "role":"CONTRIBUTEUR"
+        "role":"USER"
     },
     "timestamp":"<timestamp>"
 }
@@ -191,7 +234,8 @@ Responses:
     "timestamp":"<timestamp>"
 }
 ```
-- `401 Unauthorized`: identifiants invalides
+- `401 Unauthorized`: mot de passe incorrect
+- `404 Not Found`: username introuvable
 - `500 Internal Server Error`: erreur sur le serveur
 
 ### `GET /auth/profile`
@@ -206,7 +250,7 @@ Responses:
 {
     "sub": "<uuid>",
     "username": "alice",
-    "role": "CONTRIBUTEUR",
+    "role": "USER",
     "iat": 1234567890,
     "exp": 1234567890
 }
@@ -346,3 +390,65 @@ Responses:
 - `401 Unauthorized`: token manquant ou invalide
 - `403 Forbidden`: contribution non propriétaire
 - `404 Not Found`: contribution introuvable
+
+### `POST /payment/intent`
+Crée un PaymentIntent Stripe en capture manuelle et enregistre une transaction (token JWT requis).
+
+Request headers:
+- `Authorization: Bearer <jwt>`
+
+Request body:
+```json
+{
+    "contributionId": 1,
+    "montant": 50,
+    "campagneId": 1
+}
+```
+
+Responses:
+- `201 Created`
+```json
+{
+    "clientSecret":"<stripe_client_secret>",
+    "transactionId":"<uuid>"
+}
+```
+- `400 Bad Request`: montant invalide ou campagne non active
+- `401 Unauthorized`: token manquant ou invalide
+- `404 Not Found`: campagne introuvable
+
+### `GET /payment/contributions`
+Retourne l'historique des transactions de l'utilisateur connecté (token JWT requis).
+
+Request headers:
+- `Authorization: Bearer <jwt>`
+
+Responses:
+- `200 OK`
+```json
+[
+    {
+        "id":"<uuid>",
+        "paymentIntentId":"<stripe_payment_intent_id>",
+        "montant":50,
+        "statut":"pending",
+        "contributionId":1,
+        "contributeurId":"<uuid>",
+        "createdAt":"<timestamp>",
+        "updatedAt":"<timestamp>"
+    }
+]
+```
+- `401 Unauthorized`: token manquant ou invalide
+
+### `POST /payment/webhook`
+Endpoint Stripe public pour les notifications webhook.
+
+Responses:
+- `200 OK`
+```json
+{
+    "received": true
+}
+```
