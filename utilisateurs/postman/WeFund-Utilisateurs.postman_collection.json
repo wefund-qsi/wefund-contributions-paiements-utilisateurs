@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "wefund-utilisateurs-collection",
     "name": "WeFund - Utilisateurs API",
-    "description": "Collection complète du microservice utilisateurs WeFund.\n\nRoutes disponibles :\n- GET  /                    → Health check\n- POST /auth/signup         → Inscription\n- POST /auth/login          → Connexion (retourne un JWT)\n- GET  /auth/profile        → Profil (protégé JWT)\n- POST /contribution        → Créer une contribution (JWT requis)\n- GET  /contribution        → Lister mes contributions (JWT requis)\n- PATCH /contribution/:id   → Modifier le montant (JWT requis)\n- DELETE /contribution/:id  → Annuler une contribution (JWT requis)\n\nDocumentation Swagger : http://localhost:3000/api/docs",
+    "description": "Collection complète du microservice utilisateurs WeFund.\n\nRoutes disponibles :\n- GET  /                    → Health check\n- POST /auth/signup         → Inscription\n- POST /auth/login          → Connexion (retourne un JWT)\n- GET  /auth/profile        → Profil (protégé JWT)\n- POST /contribution        → Créer une contribution (JWT requis)\n- GET  /contribution        → Lister mes contributions (JWT requis)\n- PATCH /contribution/:id   → Modifier le montant (JWT requis)\n- DELETE /contribution/:id  → Annuler une contribution (JWT requis)\n- POST /payment/intent      → Créer un PaymentIntent (JWT requis)\n- GET  /payment/contributions → Historique paiements utilisateur (JWT requis)\n- POST /payment/webhook     → Webhook Stripe (public)\n\nDocumentation Swagger : http://localhost:3000/api/docs",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -29,6 +29,21 @@
     {
       "key": "campagne_id",
       "value": "1",
+      "type": "string"
+    },
+    {
+      "key": "payment_montant",
+      "value": "50",
+      "type": "string"
+    },
+    {
+      "key": "transaction_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "payment_client_secret",
+      "value": "",
       "type": "string"
     }
   ],
@@ -955,6 +970,218 @@
                 "exec": [
                   "pm.test('Status 401 sans token', function () {",
                   "  pm.response.to.have.status(401);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Payment",
+      "item": [
+        {
+          "name": "POST /payment/intent - Succès",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"contributionId\": {{contribution_id}},\n  \"montant\": {{payment_montant}},\n  \"campagneId\": {{campagne_id}}\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/payment/intent",
+              "host": ["{{base_url}}"],
+              "path": ["payment", "intent"]
+            },
+            "description": "Crée un PaymentIntent Stripe lié à une contribution. Sauvegarde transaction_id et payment_client_secret."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', function () {",
+                  "  pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "pm.test('Réponse contient clientSecret et transactionId', function () {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json).to.have.property('clientSecret');",
+                  "  pm.expect(json).to.have.property('transactionId');",
+                  "  pm.expect(json.clientSecret).to.be.a('string').and.not.empty;",
+                  "  pm.expect(json.transactionId).to.be.a('string').and.not.empty;",
+                  "});",
+                  "",
+                  "const response = pm.response.json();",
+                  "pm.collectionVariables.set('payment_client_secret', response.clientSecret || '');",
+                  "pm.collectionVariables.set('transaction_id', response.transactionId || '');"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /payment/intent - Sans token (401)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"contributionId\": {{contribution_id}},\n  \"montant\": {{payment_montant}},\n  \"campagneId\": {{campagne_id}}\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/payment/intent",
+              "host": ["{{base_url}}"],
+              "path": ["payment", "intent"]
+            },
+            "description": "Tentative de création PaymentIntent sans JWT."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 401 sans token', function () {",
+                  "  pm.response.to.have.status(401);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /payment/intent - Montant invalide (400)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"contributionId\": {{contribution_id}},\n  \"montant\": -10,\n  \"campagneId\": {{campagne_id}}\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/payment/intent",
+              "host": ["{{base_url}}"],
+              "path": ["payment", "intent"]
+            },
+            "description": "Montant négatif, attendu en 400."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400 montant invalide', function () {",
+                  "  pm.response.to.have.status(400);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /payment/contributions - Succès",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/payment/contributions",
+              "host": ["{{base_url}}"],
+              "path": ["payment", "contributions"]
+            },
+            "description": "Retourne l'historique des transactions de l'utilisateur connecté."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('La réponse est un tableau', function () {",
+                  "  pm.expect(pm.response.json()).to.be.an('array');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /payment/contributions - Sans token (401)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/payment/contributions",
+              "host": ["{{base_url}}"],
+              "path": ["payment", "contributions"]
+            },
+            "description": "Tentative de consultation de l'historique sans JWT."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 401 sans token', function () {",
+                  "  pm.response.to.have.status(401);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /payment/webhook - Signature invalide (test manuel)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "stripe-signature", "value": "t=1111111111,v1=fake_signature" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"evt_test_invalid\",\n  \"object\": \"event\",\n  \"type\": \"payment_intent.succeeded\",\n  \"data\": {\n    \"object\": {\n      \"id\": \"pi_test_invalid\"\n    }\n  }\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/payment/webhook",
+              "host": ["{{base_url}}"],
+              "path": ["payment", "webhook"]
+            },
+            "description": "Test manuel du endpoint webhook via Postman avec signature invalide. Pour un vrai test signé, utiliser Stripe CLI."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Webhook rejeté (received=false) si signature invalide', function () {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json).to.have.property('received');",
+                  "  pm.expect(json.received).to.equal(false);",
                   "});"
                 ]
               }
