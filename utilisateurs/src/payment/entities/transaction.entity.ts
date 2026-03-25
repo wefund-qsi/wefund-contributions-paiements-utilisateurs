@@ -16,7 +16,7 @@ export type TransactionStatus =
   | 'refunded'
   | 'failed';
 
-@Entity()
+@Entity('transactions')
 export class Transaction {
   @PrimaryGeneratedColumn('uuid')
   id: string;
@@ -24,7 +24,7 @@ export class Transaction {
   @Column({ unique: true })
   paymentIntentId: string;
 
-  @Column()
+  @Column('decimal', { precision: 10, scale: 2 })
   montant: number;
 
   @Column({
@@ -38,7 +38,7 @@ export class Transaction {
   contribution: Contribution;
 
   @Column({ nullable: true })
-  contributionId: number;
+  contributionId: string;
 
   @ManyToOne(() => User, { nullable: true, onDelete: 'SET NULL' })
   contributeur: User;

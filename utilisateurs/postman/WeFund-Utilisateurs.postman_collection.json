@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "wefund-utilisateurs-collection",
     "name": "WeFund - Utilisateurs API",
-    "description": "Collection complète du microservice utilisateurs WeFund.\n\nRoutes disponibles :\n- GET  /                    → Health check\n- POST /auth/signup         → Inscription\n- POST /auth/login          → Connexion (retourne un JWT)\n- GET  /auth/profile        → Profil (protégé JWT)\n- POST /contribution        → Créer une contribution (JWT requis)\n- GET  /contribution        → Lister mes contributions (JWT requis)\n- PATCH /contribution/:id   → Modifier le montant (JWT requis)\n- DELETE /contribution/:id  → Annuler une contribution (JWT requis)\n- POST /payment/intent      → Créer un PaymentIntent (JWT requis)\n- GET  /payment/contributions → Historique paiements utilisateur (JWT requis)\n- POST /payment/webhook     → Webhook Stripe (public)\n\nDocumentation Swagger : http://localhost:3000/api/docs",
+    "description": "Collection complète du microservice utilisateurs WeFund.\n\nToutes les routes sont préfixées par /api (globalPrefix NestJS).\n\nRoutes disponibles :\n- GET  /api/                    → Health check\n- POST /api/auth/signup         → Inscription (rôles valides : USER, ADMINISTRATEUR)\n- POST /api/auth/login          → Connexion (retourne un JWT)\n- GET  /api/auth/profile        → Profil (protégé JWT)\n- POST /api/contribution        → Créer une contribution (JWT requis)\n- GET  /api/contribution        → Lister mes contributions (JWT requis)\n- PATCH /api/contribution/:id   → Modifier le montant (JWT requis)\n- DELETE /api/contribution/:id  → Annuler une contribution (JWT requis)\n- POST /api/payment/intent      → Créer un PaymentIntent (JWT requis)\n- GET  /api/payment/contributions → Historique paiements (JWT requis)\n- POST /api/payment/webhook     → Webhook Stripe (public)\n- PATCH /api/campagnes/:id/moderer → Modérer une campagne (ADMINISTRATEUR)\n\nDocumentation Swagger : http://localhost:3000/api/docs",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -28,13 +28,13 @@
     },
     {
       "key": "campagne_id",
-      "value": "1",
+      "value": "REMPLACER-PAR-UUID-CAMPAGNE-ACTIVE",
       "type": "string"
     },
     {
       "key": "payment_montant",
-      "value": "50",
-      "type": "string"
+      "value": 50,
+      "type": "number"
     },
     {
       "key": "transaction_id",
@@ -52,14 +52,14 @@
       "name": "Health Check",
       "item": [
         {
-          "name": "GET / - Hello World",
+          "name": "GET /api - Hello World",
           "request": {
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{base_url}}/",
+              "raw": "{{base_url}}/api",
               "host": ["{{base_url}}"],
-              "path": [""]
+              "path": ["api"]
             },
             "description": "Vérifie que le serveur est bien démarré."
           },
@@ -71,10 +71,6 @@
                 "exec": [
                   "pm.test('Status 200', function () {",
                   "  pm.response.to.have.status(200);",
-                  "});",
-                  "",
-                  "pm.test('Réponse Hello World', function () {",
-                  "  pm.expect(pm.response.text()).to.equal('Hello World!');",
                   "});"
                 ]
               }
@@ -90,7 +86,7 @@
           "name": "Signup",
           "item": [
             {
-              "name": "POST /auth/signup - Succès (CONTRIBUTEUR)",
+              "name": "POST /api/auth/signup - Succès (USER)",
               "request": {
                 "method": "POST",
                 "header": [
@@ -98,14 +94,14 @@
                 ],
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"prenom\": \"Jean\",\n  \"nom\": \"Dupont\",\n  \"username\": \"{{test_username}}\",\n  \"password\": \"Password123!\",\n  \"role\": \"CONTRIBUTEUR\"\n}"
+                  "raw": "{\n  \"prenom\": \"Jean\",\n  \"nom\": \"Dupont\",\n  \"username\": \"{{test_username}}\",\n  \"password\": \"Password123!\",\n  \"role\": \"USER\"\n}"
                 },
                 "url": {
-                  "raw": "{{base_url}}/auth/signup",
+                  "raw": "{{base_url}}/api/auth/signup",
                   "host": ["{{base_url}}"],
-                  "path": ["auth", "signup"]
+                  "path": ["api", "auth", "signup"]
                 },
-                "description": "Crée un nouvel utilisateur avec le rôle CONTRIBUTEUR."
+                "description": "Crée un nouvel utilisateur avec le rôle USER. Rôles valides : USER, ADMINISTRATEUR."
               },
               "event": [
                 {
@@ -136,9 +132,9 @@
                       "  pm.expect(data).to.have.property('role');",
                       "});",
                       "",
-                      "pm.test('role est CONTRIBUTEUR', function () {",
+                      "pm.test('role est USER', function () {",
                       "  const data = pm.response.json().data;",
-                      "  pm.expect(data.role).to.equal('CONTRIBUTEUR');",
+                      "  pm.expect(data.role).to.equal('USER');",
                       "});",
                       "",
                       "pm.test('timestamp présent', function () {",
@@ -151,44 +147,7 @@
               ]
             },
             {
-              "name": "POST /auth/signup - Succès (PORTEUR DE PROJET)",
-              "request": {
-                "method": "POST",
-                "header": [
-                  { "key": "Content-Type", "value": "application/json" }
-                ],
-                "body": {
-                  "mode": "raw",
-                  "raw": "{\n  \"prenom\": \"Marie\",\n  \"nom\": \"Martin\",\n  \"username\": \"porteur_postman\",\n  \"password\": \"Password123!\",\n  \"role\": \"PORTEUR DE PROJET\"\n}"
-                },
-                "url": {
-                  "raw": "{{base_url}}/auth/signup",
-                  "host": ["{{base_url}}"],
-                  "path": ["auth", "signup"]
-                },
-                "description": "Crée un utilisateur avec le rôle PORTEUR DE PROJET."
-              },
-              "event": [
-                {
-                  "listen": "test",
-                  "script": {
-                    "type": "text/javascript",
-                    "exec": [
-                      "pm.test('Status 201', function () {",
-                      "  pm.response.to.have.status(201);",
-                      "});",
-                      "",
-                      "pm.test('role est PORTEUR DE PROJET', function () {",
-                      "  const data = pm.response.json().data;",
-                      "  pm.expect(data.role).to.equal('PORTEUR DE PROJET');",
-                      "});"
-                    ]
-                  }
-                }
-              ]
-            },
-            {
-              "name": "POST /auth/signup - Succès (ADMINISTRATEUR)",
+              "name": "POST /api/auth/signup - Succès (ADMINISTRATEUR)",
               "request": {
                 "method": "POST",
                 "header": [
@@ -199,9 +158,9 @@
                   "raw": "{\n  \"prenom\": \"Admin\",\n  \"nom\": \"System\",\n  \"username\": \"admin_postman\",\n  \"password\": \"AdminPass123!\",\n  \"role\": \"ADMINISTRATEUR\"\n}"
                 },
                 "url": {
-                  "raw": "{{base_url}}/auth/signup",
+                  "raw": "{{base_url}}/api/auth/signup",
                   "host": ["{{base_url}}"],
-                  "path": ["auth", "signup"]
+                  "path": ["api", "auth", "signup"]
                 },
                 "description": "Crée un utilisateur avec le rôle ADMINISTRATEUR."
               },
@@ -225,7 +184,7 @@
               ]
             },
             {
-              "name": "POST /auth/signup - Succès (VISITEUR)",
+              "name": "POST /api/auth/signup - Rôle invalide (400)",
               "request": {
                 "method": "POST",
                 "header": [
@@ -233,14 +192,14 @@
                 ],
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"prenom\": \"Visiteur\",\n  \"nom\": \"Test\",\n  \"username\": \"visiteur_postman\",\n  \"password\": \"Visit123!\",\n  \"role\": \"VISITEUR\"\n}"
+                  "raw": "{\n  \"prenom\": \"Jean\",\n  \"nom\": \"Dupont\",\n  \"username\": \"role_invalide_user\",\n  \"password\": \"Password123!\",\n  \"role\": \"CONTRIBUTEUR\"\n}"
                 },
                 "url": {
-                  "raw": "{{base_url}}/auth/signup",
+                  "raw": "{{base_url}}/api/auth/signup",
                   "host": ["{{base_url}}"],
-                  "path": ["auth", "signup"]
+                  "path": ["api", "auth", "signup"]
                 },
-                "description": "Crée un utilisateur avec le rôle VISITEUR."
+                "description": "Rôle CONTRIBUTEUR non accepté par le DTO (@IsIn). Doit retourner 400."
               },
               "event": [
                 {
@@ -248,13 +207,40 @@
                   "script": {
                     "type": "text/javascript",
                     "exec": [
-                      "pm.test('Status 201', function () {",
-                      "  pm.response.to.have.status(201);",
-                      "});",
-                      "",
-                      "pm.test('role est VISITEUR', function () {",
-                      "  const data = pm.response.json().data;",
-                      "  pm.expect(data.role).to.equal('VISITEUR');",
+                      "pm.test('Status 400 rôle invalide', function () {",
+                      "  pm.response.to.have.status(400);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "POST /api/auth/signup - Username déjà pris (409)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  { "key": "Content-Type", "value": "application/json" }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"prenom\": \"Jean\",\n  \"nom\": \"Dupont\",\n  \"username\": \"{{test_username}}\",\n  \"password\": \"Password123!\",\n  \"role\": \"USER\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/auth/signup",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "auth", "signup"]
+                },
+                "description": "Username déjà existant. Doit retourner 409 Conflict."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status 409 username déjà pris', function () {",
+                      "  pm.response.to.have.status(409);",
                       "});"
                     ]
                   }
@@ -267,7 +253,7 @@
           "name": "Login",
           "item": [
             {
-              "name": "POST /auth/login - Succès",
+              "name": "POST /api/auth/login - Succès",
               "request": {
                 "method": "POST",
                 "header": [
@@ -278,9 +264,9 @@
                   "raw": "{\n  \"username\": \"{{test_username}}\",\n  \"password\": \"Password123!\"\n}"
                 },
                 "url": {
-                  "raw": "{{base_url}}/auth/login",
+                  "raw": "{{base_url}}/api/auth/login",
                   "host": ["{{base_url}}"],
-                  "path": ["auth", "login"]
+                  "path": ["api", "auth", "login"]
                 },
                 "description": "Connexion avec des identifiants valides. Sauvegarde automatiquement le token JWT dans la variable `access_token`."
               },
@@ -315,7 +301,6 @@
                       "  pm.expect(token.split('.').length).to.equal(3);",
                       "});",
                       "",
-                      "// Sauvegarde du token pour les requêtes suivantes",
                       "const token = pm.response.json().data?.access_token;",
                       "if (token) {",
                       "  pm.collectionVariables.set('access_token', token);",
@@ -327,7 +312,7 @@
               ]
             },
             {
-              "name": "POST /auth/login - Mauvais mot de passe",
+              "name": "POST /api/auth/login - Mauvais mot de passe (401)",
               "request": {
                 "method": "POST",
                 "header": [
@@ -338,9 +323,9 @@
                   "raw": "{\n  \"username\": \"{{test_username}}\",\n  \"password\": \"mauvais_mot_de_passe\"\n}"
                 },
                 "url": {
-                  "raw": "{{base_url}}/auth/login",
+                  "raw": "{{base_url}}/api/auth/login",
                   "host": ["{{base_url}}"],
-                  "path": ["auth", "login"]
+                  "path": ["api", "auth", "login"]
                 },
                 "description": "Tentative de connexion avec un mot de passe incorrect. Doit retourner 401."
               },
@@ -359,7 +344,7 @@
               ]
             },
             {
-              "name": "POST /auth/login - Utilisateur inexistant",
+              "name": "POST /api/auth/login - Utilisateur inexistant (404)",
               "request": {
                 "method": "POST",
                 "header": [
@@ -370,11 +355,11 @@
                   "raw": "{\n  \"username\": \"utilisateur_qui_nexiste_pas\",\n  \"password\": \"Password123!\"\n}"
                 },
                 "url": {
-                  "raw": "{{base_url}}/auth/login",
+                  "raw": "{{base_url}}/api/auth/login",
                   "host": ["{{base_url}}"],
-                  "path": ["auth", "login"]
+                  "path": ["api", "auth", "login"]
                 },
-                "description": "Tentative de connexion avec un username inexistant. Doit retourner 401."
+                "description": "Tentative de connexion avec un username inexistant. Doit retourner 404."
               },
               "event": [
                 {
@@ -382,8 +367,8 @@
                   "script": {
                     "type": "text/javascript",
                     "exec": [
-                      "pm.test('Status 401 Unauthorized', function () {",
-                      "  pm.response.to.have.status(401);",
+                      "pm.test('Status 404 utilisateur inexistant', function () {",
+                      "  pm.response.to.have.status(404);",
                       "});"
                     ]
                   }
@@ -396,21 +381,18 @@
           "name": "Profile",
           "item": [
             {
-              "name": "GET /auth/profile - Succès (token valide)",
+              "name": "GET /api/auth/profile - Succès (token valide)",
               "request": {
                 "method": "GET",
                 "header": [
-                  {
-                    "key": "Authorization",
-                    "value": "Bearer {{access_token}}"
-                  }
+                  { "key": "Authorization", "value": "Bearer {{access_token}}" }
                 ],
                 "url": {
-                  "raw": "{{base_url}}/auth/profile",
+                  "raw": "{{base_url}}/api/auth/profile",
                   "host": ["{{base_url}}"],
-                  "path": ["auth", "profile"]
+                  "path": ["api", "auth", "profile"]
                 },
-                "description": "Récupère le profil de l'utilisateur connecté. Utilise le token sauvegardé lors du login."
+                "description": "Récupère le payload JWT de l'utilisateur connecté."
               },
               "event": [
                 {
@@ -436,8 +418,7 @@
                       "pm.test('Payload JWT contient role', function () {",
                       "  const json = pm.response.json();",
                       "  pm.expect(json).to.have.property('role');",
-                      "  const rolesValides = ['CONTRIBUTEUR', 'PORTEUR DE PROJET', 'ADMINISTRATEUR', 'VISITEUR'];",
-                      "  pm.expect(rolesValides).to.include(json.role);",
+                      "  pm.expect(['ADMINISTRATEUR', 'USER']).to.include(json.role);",
                       "});",
                       "",
                       "pm.test('Payload JWT contient iat et exp', function () {",
@@ -456,14 +437,14 @@
               ]
             },
             {
-              "name": "GET /auth/profile - Sans token (401)",
+              "name": "GET /api/auth/profile - Sans token (401)",
               "request": {
                 "method": "GET",
                 "header": [],
                 "url": {
-                  "raw": "{{base_url}}/auth/profile",
+                  "raw": "{{base_url}}/api/auth/profile",
                   "host": ["{{base_url}}"],
-                  "path": ["auth", "profile"]
+                  "path": ["api", "auth", "profile"]
                 },
                 "description": "Accès au profil sans header Authorization. Doit retourner 401."
               },
@@ -482,21 +463,18 @@
               ]
             },
             {
-              "name": "GET /auth/profile - Token invalide (401)",
+              "name": "GET /api/auth/profile - Token invalide (401)",
               "request": {
                 "method": "GET",
                 "header": [
-                  {
-                    "key": "Authorization",
-                    "value": "Bearer token.invalide.ici"
-                  }
+                  { "key": "Authorization", "value": "Bearer token.invalide.ici" }
                 ],
                 "url": {
-                  "raw": "{{base_url}}/auth/profile",
+                  "raw": "{{base_url}}/api/auth/profile",
                   "host": ["{{base_url}}"],
-                  "path": ["auth", "profile"]
+                  "path": ["api", "auth", "profile"]
                 },
-                "description": "Accès au profil avec un token JWT malformé. Doit retourner 401."
+                "description": "Token JWT malformé. Doit retourner 401."
               },
               "event": [
                 {
@@ -505,37 +483,6 @@
                     "type": "text/javascript",
                     "exec": [
                       "pm.test('Status 401 token invalide', function () {",
-                      "  pm.response.to.have.status(401);",
-                      "});"
-                    ]
-                  }
-                }
-              ]
-            },
-            {
-              "name": "GET /auth/profile - Token Bearer manquant (401)",
-              "request": {
-                "method": "GET",
-                "header": [
-                  {
-                    "key": "Authorization",
-                    "value": "{{access_token}}"
-                  }
-                ],
-                "url": {
-                  "raw": "{{base_url}}/auth/profile",
-                  "host": ["{{base_url}}"],
-                  "path": ["auth", "profile"]
-                },
-                "description": "Token envoyé sans le préfixe 'Bearer '. Doit retourner 401."
-              },
-              "event": [
-                {
-                  "listen": "test",
-                  "script": {
-                    "type": "text/javascript",
-                    "exec": [
-                      "pm.test('Status 401 sans préfixe Bearer', function () {",
                       "  pm.response.to.have.status(401);",
                       "});"
                     ]
@@ -551,7 +498,7 @@
       "name": "Contribution",
       "item": [
         {
-          "name": "POST /contribution - Succès (campagne active)",
+          "name": "POST /api/contribution - Succès (campagne active)",
           "request": {
             "method": "POST",
             "header": [
@@ -560,14 +507,14 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"campagneId\": {{campagne_id}},\n  \"montant\": 50\n}"
+              "raw": "{\n  \"campagneId\": \"{{campagne_id}}\",\n  \"montant\": 50\n}"
             },
             "url": {
-              "raw": "{{base_url}}/contribution",
+              "raw": "{{base_url}}/api/contribution",
               "host": ["{{base_url}}"],
-              "path": ["contribution"]
+              "path": ["api", "contribution"]
             },
-            "description": "Crée une contribution sur une campagne active. Sauvegarde l'id retourné dans `contribution_id`."
+            "description": "Crée une contribution sur une campagne active (RG1, RG2). Sauvegarde l'id dans `contribution_id`."
           },
           "event": [
             {
@@ -588,20 +535,19 @@
                   "  const data = pm.response.json().data;",
                   "  pm.expect(data).to.have.property('id');",
                   "  pm.expect(data).to.have.property('montant');",
-                  "  pm.expect(data.montant).to.equal(50);",
+                  "  pm.expect(Number(data.montant)).to.equal(50);",
                   "});",
                   "",
-                  "pm.test('data contient campagne et contributeur', function () {",
+                  "pm.test('data contient campagneId et createdAt (RG2)', function () {",
                   "  const data = pm.response.json().data;",
-                  "  pm.expect(data).to.have.property('campagne');",
-                  "  pm.expect(data).to.have.property('contributeur');",
+                  "  pm.expect(data).to.have.property('campagneId');",
+                  "  pm.expect(data).to.have.property('createdAt');",
                   "});",
                   "",
                   "pm.test('timestamp présent', function () {",
                   "  pm.expect(pm.response.json()).to.have.property('timestamp');",
                   "});",
                   "",
-                  "// Sauvegarde de l'id pour les requêtes suivantes",
                   "const id = pm.response.json().data?.id;",
                   "if (id) {",
                   "  pm.collectionVariables.set('contribution_id', id);",
@@ -613,7 +559,7 @@
           ]
         },
         {
-          "name": "POST /contribution - Sans token (401)",
+          "name": "POST /api/contribution - Sans token (401)",
           "request": {
             "method": "POST",
             "header": [
@@ -621,12 +567,12 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"campagneId\": {{campagne_id}},\n  \"montant\": 50\n}"
+              "raw": "{\n  \"campagneId\": \"{{campagne_id}}\",\n  \"montant\": 50\n}"
             },
             "url": {
-              "raw": "{{base_url}}/contribution",
+              "raw": "{{base_url}}/api/contribution",
               "host": ["{{base_url}}"],
-              "path": ["contribution"]
+              "path": ["api", "contribution"]
             },
             "description": "Tentative sans JWT. Doit retourner 401."
           },
@@ -645,7 +591,7 @@
           ]
         },
         {
-          "name": "POST /contribution - Montant invalide (400)",
+          "name": "POST /api/contribution - Montant invalide (400)",
           "request": {
             "method": "POST",
             "header": [
@@ -654,14 +600,14 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"campagneId\": {{campagne_id}},\n  \"montant\": -10\n}"
+              "raw": "{\n  \"campagneId\": \"{{campagne_id}}\",\n  \"montant\": -10\n}"
             },
             "url": {
-              "raw": "{{base_url}}/contribution",
+              "raw": "{{base_url}}/api/contribution",
               "host": ["{{base_url}}"],
-              "path": ["contribution"]
+              "path": ["api", "contribution"]
             },
-            "description": "Montant négatif. La validation doit rejeter avec 400."
+            "description": "Montant négatif. La validation DTO doit rejeter avec 400."
           },
           "event": [
             {
@@ -678,7 +624,7 @@
           ]
         },
         {
-          "name": "POST /contribution - Campagne inexistante (404)",
+          "name": "POST /api/contribution - campagneId invalide UUID (400)",
           "request": {
             "method": "POST",
             "header": [
@@ -687,14 +633,47 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"campagneId\": 999999,\n  \"montant\": 50\n}"
+              "raw": "{\n  \"campagneId\": \"pas-un-uuid\",\n  \"montant\": 50\n}"
             },
             "url": {
-              "raw": "{{base_url}}/contribution",
+              "raw": "{{base_url}}/api/contribution",
               "host": ["{{base_url}}"],
-              "path": ["contribution"]
+              "path": ["api", "contribution"]
             },
-            "description": "Campagne inexistante. Doit retourner 404."
+            "description": "campagneId non conforme UUID v4. Validation DTO doit rejeter avec 400."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400 campagneId invalide', function () {",
+                  "  pm.response.to.have.status(400);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /api/contribution - Campagne inexistante (404)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"campagneId\": \"00000000-0000-0000-0000-000000000000\",\n  \"montant\": 50\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/contribution",
+              "host": ["{{base_url}}"],
+              "path": ["api", "contribution"]
+            },
+            "description": "UUID valide mais campagne inexistante. Doit retourner 404."
           },
           "event": [
             {
@@ -711,18 +690,18 @@
           ]
         },
         {
-          "name": "GET /contribution - Mes contributions",
+          "name": "GET /api/contribution - Mes contributions (Story 2)",
           "request": {
             "method": "GET",
             "header": [
               { "key": "Authorization", "value": "Bearer {{access_token}}" }
             ],
             "url": {
-              "raw": "{{base_url}}/contribution",
+              "raw": "{{base_url}}/api/contribution",
               "host": ["{{base_url}}"],
-              "path": ["contribution"]
+              "path": ["api", "contribution"]
             },
-            "description": "Retourne toutes les contributions de l'utilisateur connecté."
+            "description": "Retourne toutes les contributions de l'utilisateur connecté triées par date DESC."
           },
           "event": [
             {
@@ -751,14 +730,14 @@
           ]
         },
         {
-          "name": "GET /contribution - Sans token (401)",
+          "name": "GET /api/contribution - Sans token (401)",
           "request": {
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{base_url}}/contribution",
+              "raw": "{{base_url}}/api/contribution",
               "host": ["{{base_url}}"],
-              "path": ["contribution"]
+              "path": ["api", "contribution"]
             },
             "description": "Sans JWT. Doit retourner 401."
           },
@@ -777,7 +756,7 @@
           ]
         },
         {
-          "name": "PATCH /contribution/:id - Modifier le montant",
+          "name": "PATCH /api/contribution/:id - Modifier le montant (Story 5)",
           "request": {
             "method": "PATCH",
             "header": [
@@ -789,11 +768,11 @@
               "raw": "{\n  \"montant\": 150\n}"
             },
             "url": {
-              "raw": "{{base_url}}/contribution/{{contribution_id}}",
+              "raw": "{{base_url}}/api/contribution/{{contribution_id}}",
               "host": ["{{base_url}}"],
-              "path": ["contribution", "{{contribution_id}}"]
+              "path": ["api", "contribution", "{{contribution_id}}"]
             },
-            "description": "Modifie le montant de la contribution créée précédemment. Utilise `contribution_id` sauvegardé."
+            "description": "Modifie le montant de la contribution créée précédemment (RG3 : campagne doit être active)."
           },
           "event": [
             {
@@ -809,8 +788,9 @@
                   "  pm.expect(pm.response.json().message).to.equal('Contribution mise à jour avec succès');",
                   "});",
                   "",
-                  "pm.test('Nouveau montant est 150', function () {",
-                  "  pm.expect(pm.response.json().data.montant).to.equal(150);",
+                  "pm.test('Nouveau montant est 150 (decimal peut être string)', function () {",
+                  "  const montant = pm.response.json().data.montant;",
+                  "  pm.expect(Number(montant)).to.equal(150);",
                   "});"
                 ]
               }
@@ -818,7 +798,7 @@
           ]
         },
         {
-          "name": "PATCH /contribution/:id - Montant invalide (400)",
+          "name": "PATCH /api/contribution/:id - Montant invalide (400)",
           "request": {
             "method": "PATCH",
             "header": [
@@ -830,11 +810,11 @@
               "raw": "{\n  \"montant\": 0\n}"
             },
             "url": {
-              "raw": "{{base_url}}/contribution/{{contribution_id}}",
+              "raw": "{{base_url}}/api/contribution/{{contribution_id}}",
               "host": ["{{base_url}}"],
-              "path": ["contribution", "{{contribution_id}}"]
+              "path": ["api", "contribution", "{{contribution_id}}"]
             },
-            "description": "Montant à zéro. Validation doit rejeter avec 400."
+            "description": "Montant à zéro. Validation DTO (@IsPositive) doit rejeter avec 400."
           },
           "event": [
             {
@@ -851,7 +831,7 @@
           ]
         },
         {
-          "name": "PATCH /contribution/:id - Contribution inexistante (404)",
+          "name": "PATCH /api/contribution/:id - Contribution inexistante (404)",
           "request": {
             "method": "PATCH",
             "header": [
@@ -863,11 +843,11 @@
               "raw": "{\n  \"montant\": 100\n}"
             },
             "url": {
-              "raw": "{{base_url}}/contribution/999999",
+              "raw": "{{base_url}}/api/contribution/00000000-0000-0000-0000-000000000000",
               "host": ["{{base_url}}"],
-              "path": ["contribution", "999999"]
+              "path": ["api", "contribution", "00000000-0000-0000-0000-000000000000"]
             },
-            "description": "ID inexistant. Doit retourner 404."
+            "description": "UUID valide mais contribution inexistante. Doit retourner 404."
           },
           "event": [
             {
@@ -884,18 +864,18 @@
           ]
         },
         {
-          "name": "DELETE /contribution/:id - Annuler la contribution",
+          "name": "DELETE /api/contribution/:id - Annuler la contribution (Story 4)",
           "request": {
             "method": "DELETE",
             "header": [
               { "key": "Authorization", "value": "Bearer {{access_token}}" }
             ],
             "url": {
-              "raw": "{{base_url}}/contribution/{{contribution_id}}",
+              "raw": "{{base_url}}/api/contribution/{{contribution_id}}",
               "host": ["{{base_url}}"],
-              "path": ["contribution", "{{contribution_id}}"]
+              "path": ["api", "contribution", "{{contribution_id}}"]
             },
-            "description": "Annule la contribution créée précédemment. Utilise `contribution_id` sauvegardé."
+            "description": "Annule la contribution créée précédemment (RG3 : campagne doit être active)."
           },
           "event": [
             {
@@ -915,7 +895,6 @@
                   "  pm.expect(pm.response.json()).to.not.have.property('data');",
                   "});",
                   "",
-                  "// Réinitialise contribution_id",
                   "pm.collectionVariables.set('contribution_id', '');"
                 ]
               }
@@ -923,18 +902,18 @@
           ]
         },
         {
-          "name": "DELETE /contribution/:id - Contribution inexistante (404)",
+          "name": "DELETE /api/contribution/:id - Contribution inexistante (404)",
           "request": {
             "method": "DELETE",
             "header": [
               { "key": "Authorization", "value": "Bearer {{access_token}}" }
             ],
             "url": {
-              "raw": "{{base_url}}/contribution/999999",
+              "raw": "{{base_url}}/api/contribution/00000000-0000-0000-0000-000000000000",
               "host": ["{{base_url}}"],
-              "path": ["contribution", "999999"]
+              "path": ["api", "contribution", "00000000-0000-0000-0000-000000000000"]
             },
-            "description": "ID inexistant. Doit retourner 404."
+            "description": "UUID valide mais contribution inexistante. Doit retourner 404."
           },
           "event": [
             {
@@ -951,14 +930,14 @@
           ]
         },
         {
-          "name": "DELETE /contribution/:id - Sans token (401)",
+          "name": "DELETE /api/contribution/:id - Sans token (401)",
           "request": {
             "method": "DELETE",
             "header": [],
             "url": {
-              "raw": "{{base_url}}/contribution/{{contribution_id}}",
+              "raw": "{{base_url}}/api/contribution/{{contribution_id}}",
               "host": ["{{base_url}}"],
-              "path": ["contribution", "{{contribution_id}}"]
+              "path": ["api", "contribution", "{{contribution_id}}"]
             },
             "description": "Sans JWT. Doit retourner 401."
           },
@@ -982,7 +961,7 @@
       "name": "Payment",
       "item": [
         {
-          "name": "POST /payment/intent - Succès",
+          "name": "POST /api/payment/intent - Succès (RG4/RG5 séquestre)",
           "request": {
             "method": "POST",
             "header": [
@@ -991,14 +970,14 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"contributionId\": {{contribution_id}},\n  \"montant\": {{payment_montant}},\n  \"campagneId\": {{campagne_id}}\n}"
+              "raw": "{\n  \"contributionId\": \"{{contribution_id}}\",\n  \"montant\": {{payment_montant}},\n  \"campagneId\": \"{{campagne_id}}\"\n}"
             },
             "url": {
-              "raw": "{{base_url}}/payment/intent",
+              "raw": "{{base_url}}/api/payment/intent",
               "host": ["{{base_url}}"],
-              "path": ["payment", "intent"]
+              "path": ["api", "payment", "intent"]
             },
-            "description": "Crée un PaymentIntent Stripe lié à une contribution. Sauvegarde transaction_id et payment_client_secret."
+            "description": "Crée un PaymentIntent Stripe (capture_method=manual, séquestre). Sauvegarde clientSecret et transactionId."
           },
           "event": [
             {
@@ -1027,7 +1006,7 @@
           ]
         },
         {
-          "name": "POST /payment/intent - Sans token (401)",
+          "name": "POST /api/payment/intent - Sans token (401)",
           "request": {
             "method": "POST",
             "header": [
@@ -1035,12 +1014,12 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"contributionId\": {{contribution_id}},\n  \"montant\": {{payment_montant}},\n  \"campagneId\": {{campagne_id}}\n}"
+              "raw": "{\n  \"contributionId\": \"{{contribution_id}}\",\n  \"montant\": {{payment_montant}},\n  \"campagneId\": \"{{campagne_id}}\"\n}"
             },
             "url": {
-              "raw": "{{base_url}}/payment/intent",
+              "raw": "{{base_url}}/api/payment/intent",
               "host": ["{{base_url}}"],
-              "path": ["payment", "intent"]
+              "path": ["api", "payment", "intent"]
             },
             "description": "Tentative de création PaymentIntent sans JWT."
           },
@@ -1059,7 +1038,7 @@
           ]
         },
         {
-          "name": "POST /payment/intent - Montant invalide (400)",
+          "name": "POST /api/payment/intent - Montant invalide (400)",
           "request": {
             "method": "POST",
             "header": [
@@ -1068,14 +1047,14 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"contributionId\": {{contribution_id}},\n  \"montant\": -10,\n  \"campagneId\": {{campagne_id}}\n}"
+              "raw": "{\n  \"contributionId\": \"{{contribution_id}}\",\n  \"montant\": -10,\n  \"campagneId\": \"{{campagne_id}}\"\n}"
             },
             "url": {
-              "raw": "{{base_url}}/payment/intent",
+              "raw": "{{base_url}}/api/payment/intent",
               "host": ["{{base_url}}"],
-              "path": ["payment", "intent"]
+              "path": ["api", "payment", "intent"]
             },
-            "description": "Montant négatif, attendu en 400."
+            "description": "Montant négatif. Validation DTO doit rejeter avec 400."
           },
           "event": [
             {
@@ -1092,18 +1071,18 @@
           ]
         },
         {
-          "name": "GET /payment/contributions - Succès",
+          "name": "GET /api/payment/contributions - Historique transactions",
           "request": {
             "method": "GET",
             "header": [
               { "key": "Authorization", "value": "Bearer {{access_token}}" }
             ],
             "url": {
-              "raw": "{{base_url}}/payment/contributions",
+              "raw": "{{base_url}}/api/payment/contributions",
               "host": ["{{base_url}}"],
-              "path": ["payment", "contributions"]
+              "path": ["api", "payment", "contributions"]
             },
-            "description": "Retourne l'historique des transactions de l'utilisateur connecté."
+            "description": "Retourne l'historique des transactions de l'utilisateur connecté (Story 2 / RG4)."
           },
           "event": [
             {
@@ -1124,14 +1103,14 @@
           ]
         },
         {
-          "name": "GET /payment/contributions - Sans token (401)",
+          "name": "GET /api/payment/contributions - Sans token (401)",
           "request": {
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{base_url}}/payment/contributions",
+              "raw": "{{base_url}}/api/payment/contributions",
               "host": ["{{base_url}}"],
-              "path": ["payment", "contributions"]
+              "path": ["api", "payment", "contributions"]
             },
             "description": "Tentative de consultation de l'historique sans JWT."
           },
@@ -1150,7 +1129,7 @@
           ]
         },
         {
-          "name": "POST /payment/webhook - Signature invalide (test manuel)",
+          "name": "POST /api/payment/webhook - Signature invalide (test manuel)",
           "request": {
             "method": "POST",
             "header": [
@@ -1162,11 +1141,11 @@
               "raw": "{\n  \"id\": \"evt_test_invalid\",\n  \"object\": \"event\",\n  \"type\": \"payment_intent.succeeded\",\n  \"data\": {\n    \"object\": {\n      \"id\": \"pi_test_invalid\"\n    }\n  }\n}"
             },
             "url": {
-              "raw": "{{base_url}}/payment/webhook",
+              "raw": "{{base_url}}/api/payment/webhook",
               "host": ["{{base_url}}"],
-              "path": ["payment", "webhook"]
+              "path": ["api", "payment", "webhook"]
             },
-            "description": "Test manuel du endpoint webhook via Postman avec signature invalide. Pour un vrai test signé, utiliser Stripe CLI."
+            "description": "Test manuel avec signature invalide. Pour un vrai test signé, utiliser Stripe CLI."
           },
           "event": [
             {
@@ -1182,6 +1161,152 @@
                   "  const json = pm.response.json();",
                   "  pm.expect(json).to.have.property('received');",
                   "  pm.expect(json.received).to.equal(false);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Campagnes — Admin (Story 8)",
+      "item": [
+        {
+          "name": "PATCH /api/campagnes/:id/moderer - Accepter (ADMINISTRATEUR)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"decision\": \"ACCEPTEE\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/campagnes/{{campagne_id}}/moderer",
+              "host": ["{{base_url}}"],
+              "path": ["api", "campagnes", "{{campagne_id}}", "moderer"]
+            },
+            "description": "Story 8 / RG6 — Accepte une campagne EN_ATTENTE → statut ACTIVE.\n\nPré-requis : token d'un ADMINISTRATEUR, campagne_id d'une campagne EN_ATTENTE."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('statut passe à ACTIVE', function () {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json.statut).to.equal('ACTIVE');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "PATCH /api/campagnes/:id/moderer - Refuser (ADMINISTRATEUR)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"decision\": \"REFUSEE\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/campagnes/{{campagne_id}}/moderer",
+              "host": ["{{base_url}}"],
+              "path": ["api", "campagnes", "{{campagne_id}}", "moderer"]
+            },
+            "description": "Story 8 / RG6 — Refuse une campagne EN_ATTENTE → statut REFUSEE."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('statut passe à REFUSEE', function () {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json.statut).to.equal('REFUSEE');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "PATCH /api/campagnes/:id/moderer - 403 si non ADMINISTRATEUR",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"decision\": \"ACCEPTEE\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/campagnes/{{campagne_id}}/moderer",
+              "host": ["{{base_url}}"],
+              "path": ["api", "campagnes", "{{campagne_id}}", "moderer"]
+            },
+            "description": "Doit retourner 403 si le JWT appartient à un USER (non ADMINISTRATEUR)."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 403', function () {",
+                  "  pm.response.to.have.status(403);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "PATCH /api/campagnes/:id/moderer - Sans token (401)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"decision\": \"ACCEPTEE\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/campagnes/{{campagne_id}}/moderer",
+              "host": ["{{base_url}}"],
+              "path": ["api", "campagnes", "{{campagne_id}}", "moderer"]
+            },
+            "description": "Sans JWT. Doit retourner 401."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 401 sans token', function () {",
+                  "  pm.response.to.have.status(401);",
                   "});"
                 ]
               }

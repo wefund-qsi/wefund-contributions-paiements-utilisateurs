@@ -1,23 +1,25 @@
-import { Column, Entity, ManyToOne, PrimaryGeneratedColumn } from "typeorm";
-import { Campagne } from "./campagne.entity";
-import { User } from "../../auth/entities/user.entity";
+import { Column, CreateDateColumn, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from 'typeorm';
+import { CampagneEntity } from '@projet1/campagnes/domain/campagne.entity';
+import { User } from '../../auth/entities/user.entity';
 
-
-@Entity()
+@Entity('contributions')
 export class Contribution {
-    @PrimaryGeneratedColumn()
-    id: number;
+  @PrimaryGeneratedColumn('uuid')
+  id: string;
 
-    @Column()
-    montant: number;
+  @Column('decimal', { precision: 10, scale: 2 })
+  montant: number;
 
-    @ManyToOne(() => Campagne, (campagne) => campagne.contributions)
-    campagne: Campagne;
+  @Column({ nullable: true })
+  campagneId: string;
 
-    @ManyToOne(() => User, (user) => user.contributions)
-    contributeur: User;
+  @ManyToOne(() => CampagneEntity, { nullable: false, onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'campagneId' })
+  campagne: CampagneEntity;
 
-    @Column()
-    timestamp: Date;
+  @ManyToOne(() => User, (user) => user.contributions, { nullable: false, onDelete: 'CASCADE' })
+  contributeur: User;
 
+  @CreateDateColumn()
+  createdAt: Date;
 }

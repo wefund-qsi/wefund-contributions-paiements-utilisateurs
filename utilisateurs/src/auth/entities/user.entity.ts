@@ -2,7 +2,6 @@ import { Entity, Column, PrimaryGeneratedColumn, OneToOne, OneToMany } from 'typ
 import { Auth } from './auth.entity';
 import { Role } from './role.entity';
 import { Contribution } from '../../contribution/entities/contribution.entity';
-import { Projet } from '../../contribution/entities/projet.entity';
 
 @Entity()
 export class User {
@@ -26,7 +25,4 @@ export class User {
 
   @OneToMany(() => Contribution, (contribution) => contribution.contributeur)
   contributions: Contribution[];
-
-  @OneToMany(() => Projet, (projet) => projet.porteurProjet)
-  projets: Projet[];
 }
