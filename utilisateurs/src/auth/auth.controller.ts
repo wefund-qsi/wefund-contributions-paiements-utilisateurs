@@ -53,6 +53,7 @@ export class AuthController {
             if (err instanceof ConflictException) {
                 throw err;
             }
+            console.error('[signup] unexpected error:', err);
             throw new InternalServerErrorException('An unexpected error occurred during signup');
         }
     }
