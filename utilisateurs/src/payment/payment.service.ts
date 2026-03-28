@@ -1,16 +1,17 @@
 import {
   BadRequestException,
+  ForbiddenException,
   Injectable,
   Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import { ConfigService } from '@nestjs/config';
 import Stripe from 'stripe';
 import { Transaction } from './entities/transaction.entity';
 import { Contribution } from '../contribution/entities/contribution.entity';
-import { CampagneEntity, StatutCampagne } from '@projet1/campagnes/domain/campagne.entity';
+import { ProjectsApiClient } from '../projects/projects-api.client';
 
 @Injectable()
 export class PaymentService {
@@ -22,8 +23,7 @@ export class PaymentService {
     private readonly transactionRepository: Repository<Transaction>,
     @InjectRepository(Contribution)
     private readonly contributionRepository: Repository<Contribution>,
-    @InjectRepository(CampagneEntity)
-    private readonly campagneRepository: Repository<CampagneEntity>,
+    private readonly projectsApiClient: ProjectsApiClient,
     private readonly configService: ConfigService,
   ) {
     const stripeKey = this.configService.get<string>('STRIPE_SECRET_KEY') || 'sk_test_dummy';
@@ -38,15 +38,44 @@ export class PaymentService {
   ): Promise<{ clientSecret: string; transactionId: string }> {
     this.logger.log(`[createPaymentIntent] contributionId=${contributionId} campagneId=${campagneId} montant=${montant}`);
 
-    const campagne = await this.campagneRepository.findOne({ where: { id: campagneId } });
-    if (!campagne) {
-      throw new NotFoundException(`Campagne ${campagneId} introuvable`);
+    const contribution = await this.contributionRepository.findOne({
+      where: { id: contributionId },
+      relations: ['contributeur'],
+    });
+    if (!contribution) {
+      throw new NotFoundException(`Contribution ${contributionId} introuvable`);
     }
-    if (campagne.statut !== StatutCampagne.ACTIVE) {
+    if (contribution.contributeur?.id !== contributeurId) {
+      throw new ForbiddenException('Vous ne pouvez payer que vos propres contributions');
+    }
+
+    const contributionCampagneId = contribution.campagneId;
+    if (contributionCampagneId !== campagneId) {
+      throw new BadRequestException('La contribution ne correspond pas à la campagne demandée');
+    }
+
+    const campagne = await this.projectsApiClient.getCampagneById(campagneId);
+    if (campagne.statut !== 'ACTIVE') {
       throw new BadRequestException(`La campagne n'est pas active (statut: ${campagne.statut})`);
     }
     if (montant <= 0) {
       throw new BadRequestException('Le montant doit être positif');
+    }
+
+    if (Number(contribution.montant) !== Number(montant)) {
+      throw new BadRequestException('Le montant du paiement doit correspondre au montant de la contribution');
+    }
+
+    const existingTransaction = await this.transactionRepository.findOne({
+      where: {
+        contributionId,
+        contributeurId,
+        statut: In(['pending', 'authorized']),
+      },
+      order: { createdAt: 'DESC' },
+    });
+    if (existingTransaction) {
+      throw new BadRequestException('Une transaction est déjà en cours pour cette contribution');
     }
 
     const idempotencyKey = `contribution-${contributionId}-user-${contributeurId}`;
@@ -65,6 +94,7 @@ export class PaymentService {
       montant,
       statut: 'pending',
       contributionId,
+      campagneId,
       contributeurId,
     });
     await this.transactionRepository.save(transaction);
@@ -88,6 +118,31 @@ export class PaymentService {
     await this.transactionRepository.update({ paymentIntentId }, { statut: 'refunded' });
   }
 
+  async refundContribution(contributionId: string, contributeurId: string): Promise<void> {
+    this.logger.log(`[refundContribution] contributionId=${contributionId} contributeurId=${contributeurId}`);
+
+    const transaction = await this.transactionRepository.findOne({
+      where: {
+        contributionId,
+        contributeurId,
+        statut: In(['pending', 'authorized', 'captured']),
+      },
+      order: { createdAt: 'DESC' },
+    });
+
+    if (!transaction) {
+      throw new NotFoundException('Aucune transaction remboursable trouvée pour cette contribution');
+    }
+
+    if (transaction.statut === 'captured') {
+      await this.refundPayment(transaction.paymentIntentId);
+      return;
+    }
+
+    await this.stripe.paymentIntents.cancel(transaction.paymentIntentId);
+    await this.transactionRepository.update({ id: transaction.id }, { statut: 'refunded' });
+  }
+
   async captureAllForCampaign(campagneId: string): Promise<void> {
     this.logger.log(`[captureAllForCampaign] campagneId=${campagneId} — RG5: transfert des fonds (succès)`);
     const transactions = await this.getAuthorizedTransactionsByCampagne(campagneId);
@@ -104,11 +159,16 @@ export class PaymentService {
 
   async refundAllForCampaign(campagneId: string): Promise<void> {
     this.logger.log(`[refundAllForCampaign] campagneId=${campagneId} — Story 3 / RG5: remboursement (échec)`);
-    const transactions = await this.getAuthorizedTransactionsByCampagne(campagneId);
+    const transactions = await this.getRefundableTransactionsByCampagne(campagneId);
     this.logger.log(`[refundAllForCampaign] ${transactions.length} transaction(s) à rembourser`);
     for (const tx of transactions) {
       try {
-        await this.refundPayment(tx.paymentIntentId);
+        if (tx.statut === 'captured') {
+          await this.refundPayment(tx.paymentIntentId);
+        } else {
+          await this.stripe.paymentIntents.cancel(tx.paymentIntentId);
+          await this.transactionRepository.update({ id: tx.id }, { statut: 'refunded' });
+        }
         this.logger.log(`[refundAllForCampaign] Transaction ${tx.id} remboursée`);
       } catch (err) {
         this.logger.error(`[refundAllForCampaign] Echec remboursement transaction ${tx.id}: ${err.message}`);
@@ -117,13 +177,23 @@ export class PaymentService {
   }
 
   async getAuthorizedTransactionsByCampagne(campagneId: string): Promise<Transaction[]> {
-    return this.transactionRepository
-      .createQueryBuilder('t')
-      .innerJoin('t.contribution', 'c')
-      .innerJoin('c.campagne', 'camp')
-      .where('camp.id = :campagneId', { campagneId })
-      .andWhere('t.statut = :statut', { statut: 'authorized' })
-      .getMany();
+    return this.transactionRepository.find({
+      where: {
+        campagneId,
+        statut: 'authorized',
+      },
+      order: { createdAt: 'DESC' },
+    });
+  }
+
+  async getRefundableTransactionsByCampagne(campagneId: string): Promise<Transaction[]> {
+    return this.transactionRepository.find({
+      where: {
+        campagneId,
+        statut: In(['pending', 'authorized', 'captured']),
+      },
+      order: { createdAt: 'DESC' },
+    });
   }
 
   async getTransactionsByContributeur(contributeurId: string): Promise<Transaction[]> {

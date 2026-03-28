@@ -1,7 +1,9 @@
 # Service Utilisateurs - API
 
 ## Base URL
-- Accès en direct: `http://localhost:3000`
+- Accès en direct: `http://localhost:3000/api`
+
+> Toutes les routes documentées ci-dessous sont préfixées par `/api`.
 
 ## Authentification
 - Content-Type attendu dans l'en-tête `Content-Type: application/json` pour tous les routes
@@ -80,7 +82,7 @@
 ### CreateContributionRequest
 ```json
 {
-    "campagneId": 1,
+    "campagneId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
     "montant": 50
 }
 ```
@@ -95,9 +97,9 @@
 ### CreatePaymentIntentRequest
 ```json
 {
-    "contributionId": 1,
+    "contributionId": "d4f7f9aa-7d11-4f38-9f4a-9b0d01a7f112",
     "montant": 50,
-    "campagneId": 1
+    "campagneId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
 }
 ```
 
@@ -272,7 +274,7 @@ Request headers:
 Request body:
 ```json
 {
-    "campagneId": 1,
+    "campagneId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
     "montant": 50
 }
 ```
@@ -400,9 +402,9 @@ Request headers:
 Request body:
 ```json
 {
-    "contributionId": 1,
+    "contributionId": "d4f7f9aa-7d11-4f38-9f4a-9b0d01a7f112",
     "montant": 50,
-    "campagneId": 1
+    "campagneId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
 }
 ```
 

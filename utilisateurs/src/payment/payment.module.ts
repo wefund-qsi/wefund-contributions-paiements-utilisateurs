@@ -6,12 +6,13 @@ import { PaymentService } from './payment.service';
 import { PaymentProcessor } from './payment.processor';
 import { Transaction } from './entities/transaction.entity';
 import { Contribution } from '../contribution/entities/contribution.entity';
-import { CampagneEntity } from '@projet1/campagnes/domain/campagne.entity';
+import { ProjectsApiModule } from '../projects/projects-api.module';
 
 @Module({
   imports: [
     ConfigModule,
-    TypeOrmModule.forFeature([Transaction, Contribution, CampagneEntity]),
+    ProjectsApiModule,
+    TypeOrmModule.forFeature([Transaction, Contribution]),
   ],
   controllers: [PaymentController],
   providers: [PaymentService, PaymentProcessor],

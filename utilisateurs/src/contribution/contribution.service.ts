@@ -8,10 +8,11 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Contribution } from './entities/contribution.entity';
-import { CampagneEntity, StatutCampagne } from '@projet1/campagnes/domain/campagne.entity';
 import { User } from '../auth/entities/user.entity';
+import { PaymentService } from '../payment/payment.service';
 import { CreateContributionDto } from './dtos/create-contribution.dto';
 import { UpdateContributionDto } from './dtos/update-contribution.dto';
+import { ProjectsApiClient } from '../projects/projects-api.client';
 
 @Injectable()
 export class ContributionService {
@@ -20,22 +21,17 @@ export class ContributionService {
   constructor(
     @InjectRepository(Contribution)
     private readonly contributionRepository: Repository<Contribution>,
-    @InjectRepository(CampagneEntity)
-    private readonly campagneRepository: Repository<CampagneEntity>,
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
+    private readonly paymentService: PaymentService,
+    private readonly projectsApiClient: ProjectsApiClient,
   ) {}
 
   async create(userId: string, dto: CreateContributionDto): Promise<Contribution> {
     this.logger.log(`[create] userId=${userId} campagneId=${dto.campagneId} montant=${dto.montant}`);
 
-    const campagne = await this.campagneRepository.findOne({ where: { id: dto.campagneId } });
-    if (!campagne) {
-      throw new NotFoundException(`Campagne ${dto.campagneId} introuvable`);
-    }
-    if (campagne.statut !== StatutCampagne.ACTIVE) {
-      throw new BadRequestException(`La campagne n'est pas active (statut: ${campagne.statut})`);
-    }
+    const campagne = await this.projectsApiClient.getCampagneById(dto.campagneId);
+    this.assertCampagneActive(campagne.statut, dto.campagneId);
 
     const user = await this.userRepository.findOne({ where: { id: userId } });
     if (!user) {
@@ -44,7 +40,6 @@ export class ContributionService {
 
     const contribution = this.contributionRepository.create({
       montant: dto.montant,
-      campagne,
       campagneId: campagne.id,
       contributeur: user,
     });
@@ -58,7 +53,6 @@ export class ContributionService {
     this.logger.log(`[findAllByUser] userId=${userId}`);
     return this.contributionRepository.find({
       where: { contributeur: { id: userId } },
-      relations: ['campagne'],
       order: { createdAt: 'DESC' },
     });
   }
@@ -68,7 +62,7 @@ export class ContributionService {
 
     const contribution = await this.contributionRepository.findOne({
       where: { id },
-      relations: ['contributeur', 'campagne'],
+      relations: ['contributeur'],
     });
 
     if (!contribution) {
@@ -77,9 +71,7 @@ export class ContributionService {
     if (contribution.contributeur.id !== userId) {
       throw new ForbiddenException('Vous ne pouvez modifier que vos propres contributions');
     }
-    if (contribution.campagne.statut !== StatutCampagne.ACTIVE) {
-      throw new BadRequestException('La campagne n\'est plus active, modification impossible (RG3)');
-    }
+    await this.ensureCampagneActive(contribution.campagneId);
 
     contribution.montant = dto.montant;
     const saved = await this.contributionRepository.save(contribution);
@@ -92,7 +84,7 @@ export class ContributionService {
 
     const contribution = await this.contributionRepository.findOne({
       where: { id },
-      relations: ['contributeur', 'campagne'],
+      relations: ['contributeur'],
     });
 
     if (!contribution) {
@@ -101,11 +93,27 @@ export class ContributionService {
     if (contribution.contributeur.id !== userId) {
       throw new ForbiddenException('Vous ne pouvez annuler que vos propres contributions');
     }
-    if (contribution.campagne.statut !== StatutCampagne.ACTIVE) {
-      throw new BadRequestException('La campagne n\'est plus active, annulation impossible (RG3)');
-    }
+    await this.ensureCampagneActive(contribution.campagneId);
 
+    await this.paymentService.refundContribution(contribution.id, userId);
     await this.contributionRepository.remove(contribution);
     this.logger.log(`[remove] Contribution ${id} annulée`);
+  }
+
+  private async ensureCampagneActive(campagneId?: string): Promise<void> {
+    if (!campagneId) {
+      throw new BadRequestException('Contribution invalide: campagneId manquant');
+    }
+
+    const campagne = await this.projectsApiClient.getCampagneById(campagneId);
+    this.assertCampagneActive(campagne.statut, campagneId);
+  }
+
+  private assertCampagneActive(statut: string, campagneId: string): void {
+    if (statut !== 'ACTIVE') {
+      throw new BadRequestException(
+        `La campagne ${campagneId} n'est pas active (statut: ${statut})`,
+      );
+    }
   }
 }

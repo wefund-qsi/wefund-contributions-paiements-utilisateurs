@@ -3,6 +3,7 @@ import {
   Controller,
   Param,
   Patch,
+  Post,
   Req,
   UseGuards,
 } from '@nestjs/common';
@@ -38,6 +39,17 @@ export class CampagnesController {
     @Body() dto: ModererCampagneDto,
     @Req() req: any,
   ) {
-    return this.campagnesService.moderer(id, dto.decision, req.user?.role);
+    return this.campagnesService.moderer(
+      id,
+      dto.decision,
+      req.user?.role,
+      req.headers?.authorization,
+    );
+  }
+
+  @Post(':id/soumettre')
+  @ApiOperation({ summary: 'Soumettre une campagne (passer BROUILLON → EN_ATTENTE)' })
+  async soumettre(@Param('id') id: string, @Req() req: any) {
+    return this.campagnesService.soumettre(id, req.user?.role, req.headers?.authorization);
   }
 }

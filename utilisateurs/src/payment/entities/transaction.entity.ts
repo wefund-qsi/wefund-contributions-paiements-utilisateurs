@@ -40,6 +40,9 @@ export class Transaction {
   @Column({ nullable: true })
   contributionId: string;
 
+  @Column({ nullable: true })
+  campagneId: string;
+
   @ManyToOne(() => User, { nullable: true, onDelete: 'SET NULL' })
   contributeur: User;
 

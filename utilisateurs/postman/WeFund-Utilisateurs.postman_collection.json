@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "wefund-utilisateurs-collection",
     "name": "WeFund - Utilisateurs API",
-    "description": "Collection complète du microservice utilisateurs WeFund.\n\nToutes les routes sont préfixées par /api (globalPrefix NestJS).\n\nRoutes disponibles :\n- GET  /api/                    → Health check\n- POST /api/auth/signup         → Inscription (rôles valides : USER, ADMINISTRATEUR)\n- POST /api/auth/login          → Connexion (retourne un JWT)\n- GET  /api/auth/profile        → Profil (protégé JWT)\n- POST /api/contribution        → Créer une contribution (JWT requis)\n- GET  /api/contribution        → Lister mes contributions (JWT requis)\n- PATCH /api/contribution/:id   → Modifier le montant (JWT requis)\n- DELETE /api/contribution/:id  → Annuler une contribution (JWT requis)\n- POST /api/payment/intent      → Créer un PaymentIntent (JWT requis)\n- GET  /api/payment/contributions → Historique paiements (JWT requis)\n- POST /api/payment/webhook     → Webhook Stripe (public)\n- PATCH /api/campagnes/:id/moderer → Modérer une campagne (ADMINISTRATEUR)\n\nDocumentation Swagger : http://localhost:3000/api/docs",
+    "description": "Collection complète du microservice utilisateurs WeFund.\n\nToutes les routes sont préfixées par /api (globalPrefix NestJS).\n\nPré-requis importants :\n- Renseigner `campagne_id` avec un UUID v4 de campagne ACTIVE côté microservice Projets.\n- Vérifier que le service utilisateurs peut appeler Projets (env `PROJECTS_API_BASE_URL`).\n- Pour les webhooks signés, utiliser Stripe CLI et forward vers /api/payment/webhook.\n\nRoutes disponibles :\n- GET  /api/                    → Health check\n- POST /api/auth/signup         → Inscription (rôles valides : USER, ADMINISTRATEUR)\n- POST /api/auth/login          → Connexion (retourne un JWT)\n- GET  /api/auth/profile        → Profil (protégé JWT)\n- POST /api/contribution        → Créer une contribution (JWT requis)\n- GET  /api/contribution        → Lister mes contributions (JWT requis)\n- PATCH /api/contribution/:id   → Modifier le montant (JWT requis)\n- DELETE /api/contribution/:id  → Annuler une contribution (JWT requis)\n- POST /api/payment/intent      → Créer un PaymentIntent (JWT requis)\n- GET  /api/payment/contributions → Historique paiements (JWT requis)\n- POST /api/payment/webhook     → Webhook Stripe (public)\n- PATCH /api/campagnes/:id/moderer → Modérer une campagne (ADMINISTRATEUR)\n\nDocumentation Swagger : http://localhost:3000/api/docs",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -35,6 +35,11 @@
       "key": "payment_montant",
       "value": 50,
       "type": "number"
+    },
+    {
+      "key": "payment_contribution_id",
+      "value": "",
+      "type": "string"
     },
     {
       "key": "transaction_id",
@@ -551,6 +556,8 @@
                   "const id = pm.response.json().data?.id;",
                   "if (id) {",
                   "  pm.collectionVariables.set('contribution_id', id);",
+                  "  pm.collectionVariables.set('payment_contribution_id', id);",
+                  "  pm.collectionVariables.set('payment_montant', Number(pm.response.json().data?.montant));",
                   "  console.log('contribution_id sauvegardé :', id);",
                   "}"
                 ]
@@ -791,7 +798,9 @@
                   "pm.test('Nouveau montant est 150 (decimal peut être string)', function () {",
                   "  const montant = pm.response.json().data.montant;",
                   "  pm.expect(Number(montant)).to.equal(150);",
-                  "});"
+                  "});",
+                  "",
+                  "pm.collectionVariables.set('payment_montant', 150);"
                 ]
               }
             }
@@ -961,6 +970,55 @@
       "name": "Payment",
       "item": [
         {
+          "name": "POST /api/contribution - Préparer le paiement",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"campagneId\": \"{{campagne_id}}\",\n  \"montant\": {{payment_montant}}\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/contribution",
+              "host": ["{{base_url}}"],
+              "path": ["api", "contribution"]
+            },
+            "description": "Crée une contribution dédiée au scénario paiement et enregistre payment_contribution_id + payment_montant."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201 setup contribution', function () {",
+                  "  pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "pm.test('Réponse contribution standard', function () {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json).to.have.property('statusCode');",
+                  "  pm.expect(json.statusCode).to.equal(201);",
+                  "  pm.expect(json).to.have.property('message');",
+                  "  pm.expect(json.message).to.equal('Contribution créée avec succès');",
+                  "  pm.expect(json).to.have.property('data');",
+                  "});",
+                  "",
+                  "const data = pm.response.json().data || {};",
+                  "pm.collectionVariables.set('payment_contribution_id', data.id || '');",
+                  "pm.collectionVariables.set('payment_montant', Number(data.montant || 0));",
+                  "pm.test('payment_contribution_id sauvegardé', function () {",
+                  "  pm.expect(pm.collectionVariables.get('payment_contribution_id')).to.be.a('string').and.not.empty;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
           "name": "POST /api/payment/intent - Succès (RG4/RG5 séquestre)",
           "request": {
             "method": "POST",
@@ -970,7 +1028,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"contributionId\": \"{{contribution_id}}\",\n  \"montant\": {{payment_montant}},\n  \"campagneId\": \"{{campagne_id}}\"\n}"
+              "raw": "{\n  \"contributionId\": \"{{payment_contribution_id}}\",\n  \"montant\": {{payment_montant}},\n  \"campagneId\": \"{{campagne_id}}\"\n}"
             },
             "url": {
               "raw": "{{base_url}}/api/payment/intent",
@@ -1006,6 +1064,39 @@
           ]
         },
         {
+          "name": "POST /api/payment/intent - Transaction déjà en cours (400)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"contributionId\": \"{{payment_contribution_id}}\",\n  \"montant\": {{payment_montant}},\n  \"campagneId\": \"{{campagne_id}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/payment/intent",
+              "host": ["{{base_url}}"],
+              "path": ["api", "payment", "intent"]
+            },
+            "description": "Deuxième appel sur la même contribution: doit retourner 400 (transaction déjà en cours)."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400 transaction en cours', function () {",
+                  "  pm.response.to.have.status(400);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
           "name": "POST /api/payment/intent - Sans token (401)",
           "request": {
             "method": "POST",
@@ -1014,7 +1105,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"contributionId\": \"{{contribution_id}}\",\n  \"montant\": {{payment_montant}},\n  \"campagneId\": \"{{campagne_id}}\"\n}"
+              "raw": "{\n  \"contributionId\": \"{{payment_contribution_id}}\",\n  \"montant\": {{payment_montant}},\n  \"campagneId\": \"{{campagne_id}}\"\n}"
             },
             "url": {
               "raw": "{{base_url}}/api/payment/intent",
@@ -1047,7 +1138,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"contributionId\": \"{{contribution_id}}\",\n  \"montant\": -10,\n  \"campagneId\": \"{{campagne_id}}\"\n}"
+              "raw": "{\n  \"contributionId\": \"{{payment_contribution_id}}\",\n  \"montant\": -10,\n  \"campagneId\": \"{{campagne_id}}\"\n}"
             },
             "url": {
               "raw": "{{base_url}}/api/payment/intent",
@@ -1096,6 +1187,17 @@
                   "",
                   "pm.test('La réponse est un tableau', function () {",
                   "  pm.expect(pm.response.json()).to.be.an('array');",
+                  "});",
+                  "",
+                  "pm.test('Historique contient la transaction créée', function () {",
+                  "  const txId = pm.collectionVariables.get('transaction_id');",
+                  "  if (!txId) {",
+                  "    pm.expect(true).to.equal(true);",
+                  "    return;",
+                  "  }",
+                  "  const list = pm.response.json();",
+                  "  const found = list.find((t) => t.id === txId);",
+                  "  pm.expect(found, 'transaction_id introuvable dans historique').to.exist;",
                   "});"
                 ]
               }
