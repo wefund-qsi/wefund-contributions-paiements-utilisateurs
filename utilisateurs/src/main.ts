@@ -9,24 +9,29 @@ const logger = new Logger('Bootstrap');
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, { rawBody: true });
 
-  const kafkaBrokers = (process.env.KAFKA_BROKERS || 'redpanda:9092')
+  process.env.KAFKAJS_NO_PARTITIONER_WARNING = process.env.KAFKAJS_NO_PARTITIONER_WARNING || '1';
+
+  const kafkaEnabled = (process.env.KAFKA_ENABLED || 'true').toLowerCase() === 'true';
+  const kafkaBrokers = (process.env.KAFKA_BROKERS || 'localhost:9092')
     .split(',')
     .map((broker) => broker.trim())
     .filter(Boolean);
 
-  // Kafka consumer — écoute campaign.closed.success, campaign.closed.failed, campaign.moderated
-  app.connectMicroservice<MicroserviceOptions>({
-    transport: Transport.KAFKA,
-    options: {
-      client: {
-        clientId: 'wefund-contributions-service',
-        brokers: kafkaBrokers,
+  if (kafkaEnabled) {
+    // Kafka consumer — écoute campaign.closed.success, campaign.closed.failed, campaign.moderated
+    app.connectMicroservice<MicroserviceOptions>({
+      transport: Transport.KAFKA,
+      options: {
+        client: {
+          clientId: 'wefund-contributions-service',
+          brokers: kafkaBrokers,
+        },
+        consumer: {
+          groupId: 'wefund-contributions-consumer',
+        },
       },
-      consumer: {
-        groupId: 'wefund-contributions-consumer',
-      },
-    },
-  });
+    });
+  }
 
   app.setGlobalPrefix('api');
 
@@ -50,12 +55,22 @@ async function bootstrap() {
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api/docs', app, document);
 
-  await app.startAllMicroservices();
+  if (kafkaEnabled) {
+    try {
+      await app.startAllMicroservices();
+      logger.log(`Kafka consumer connecté à : ${kafkaBrokers.join(', ')}`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Erreur inconnue';
+      logger.warn(`Kafka indisponible, API HTTP démarrée sans consumer (${message})`);
+    }
+  } else {
+    logger.warn('Kafka désactivé via KAFKA_ENABLED=false');
+  }
+
   const port = process.env.PORT ?? 3000;
   await app.listen(port);
 
   logger.log(`Microservice Projet 2 démarré sur : http://localhost:${port}/api`);
   logger.log(`Swagger disponible sur : http://localhost:${port}/api/docs`);
-  logger.log(`Kafka consumer connecté à : ${kafkaBrokers.join(', ')}`);
 }
 bootstrap();

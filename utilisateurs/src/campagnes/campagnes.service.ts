@@ -1,16 +1,14 @@
-import { ForbiddenException, Injectable, Logger, NotFoundException } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { CampagneEntity, StatutCampagne } from '@projet1/campagnes/domain/campagne.entity';
+import { ForbiddenException, Injectable, Logger } from '@nestjs/common';
+import { ProjectsApiClient } from '../projects/projects-api.client';
+
+type StatutCampagne = 'EN_ATTENTE' | 'ACTIVE' | 'REFUSEE' | 'ECHOUEE' | 'REUSSIE' | 'BROUILLON';
+type CampagneRow = { id: string; statut: StatutCampagne | string };
 
 @Injectable()
 export class CampagnesService {
   private readonly logger = new Logger(CampagnesService.name);
 
-  constructor(
-    @InjectRepository(CampagneEntity)
-    private readonly campagneRepository: Repository<CampagneEntity>,
-  ) {}
+  constructor(private readonly projectsApiClient: ProjectsApiClient) {}
 
   /**
    * Story 8 / RG6 — Modération admin.
@@ -22,24 +20,17 @@ export class CampagnesService {
     campagneId: string,
     decision: 'ACCEPTEE' | 'REFUSEE',
     userRole: string,
-  ): Promise<CampagneEntity> {
+    authorizationHeader?: string,
+  ): Promise<CampagneRow> {
     if (userRole !== 'ADMINISTRATEUR') {
       throw new ForbiddenException('Seul un administrateur peut modérer une campagne');
     }
 
-    const campagne = await this.campagneRepository.findOne({ where: { id: campagneId } });
-    if (!campagne) {
-      throw new NotFoundException(`Campagne ${campagneId} introuvable`);
-    }
-
-    if (campagne.statut !== StatutCampagne.EN_ATTENTE) {
-      throw new ForbiddenException(
-        `La campagne doit être EN_ATTENTE pour être modérée (statut actuel : ${campagne.statut})`,
-      );
-    }
-
-    campagne.statut = decision === 'ACCEPTEE' ? StatutCampagne.ACTIVE : StatutCampagne.REFUSEE;
-    const saved = await this.campagneRepository.save(campagne);
+    const saved = await this.projectsApiClient.modererCampagne(
+      campagneId,
+      decision,
+      authorizationHeader,
+    );
 
     this.logger.log(
       `[moderer] campagneId=${campagneId} decision=${decision} → statut=${saved.statut}`,

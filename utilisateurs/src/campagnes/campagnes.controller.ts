@@ -38,6 +38,11 @@ export class CampagnesController {
     @Body() dto: ModererCampagneDto,
     @Req() req: any,
   ) {
-    return this.campagnesService.moderer(id, dto.decision, req.user?.role);
+    return this.campagnesService.moderer(
+      id,
+      dto.decision,
+      req.user?.role,
+      req.headers?.authorization,
+    );
   }
 }

@@ -9,6 +9,7 @@ import { ContributionModule } from './contribution/contribution.module';
 import { PaymentModule } from './payment/payment.module';
 import { KafkaConsumerModule } from './kafka/kafka-consumer.module';
 import { CampagnesModule } from './campagnes/campagnes.module';
+import { ProjectsApiModule } from './projects/projects-api.module';
 
 @Module({
   imports: [
@@ -38,6 +39,7 @@ import { CampagnesModule } from './campagnes/campagnes.module';
     }),
 
     AuthModule,
+    ProjectsApiModule,
     ContributionModule,
     PaymentModule,
     KafkaConsumerModule,

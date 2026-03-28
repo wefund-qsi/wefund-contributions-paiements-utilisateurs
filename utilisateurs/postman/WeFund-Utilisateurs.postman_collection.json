@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "wefund-utilisateurs-collection",
     "name": "WeFund - Utilisateurs API",
-    "description": "Collection complète du microservice utilisateurs WeFund.\n\nToutes les routes sont préfixées par /api (globalPrefix NestJS).\n\nRoutes disponibles :\n- GET  /api/                    → Health check\n- POST /api/auth/signup         → Inscription (rôles valides : USER, ADMINISTRATEUR)\n- POST /api/auth/login          → Connexion (retourne un JWT)\n- GET  /api/auth/profile        → Profil (protégé JWT)\n- POST /api/contribution        → Créer une contribution (JWT requis)\n- GET  /api/contribution        → Lister mes contributions (JWT requis)\n- PATCH /api/contribution/:id   → Modifier le montant (JWT requis)\n- DELETE /api/contribution/:id  → Annuler une contribution (JWT requis)\n- POST /api/payment/intent      → Créer un PaymentIntent (JWT requis)\n- GET  /api/payment/contributions → Historique paiements (JWT requis)\n- POST /api/payment/webhook     → Webhook Stripe (public)\n- PATCH /api/campagnes/:id/moderer → Modérer une campagne (ADMINISTRATEUR)\n\nDocumentation Swagger : http://localhost:3000/api/docs",
+    "description": "Collection complète du microservice utilisateurs WeFund.\n\nToutes les routes sont préfixées par /api (globalPrefix NestJS).\n\nPré-requis importants :\n- Renseigner `campagne_id` avec un UUID v4 de campagne ACTIVE côté microservice Projets.\n- Vérifier que le service utilisateurs peut appeler Projets (env `PROJECTS_API_BASE_URL`).\n- Pour les webhooks signés, utiliser Stripe CLI et forward vers /api/payment/webhook.\n\nRoutes disponibles :\n- GET  /api/                    → Health check\n- POST /api/auth/signup         → Inscription (rôles valides : USER, ADMINISTRATEUR)\n- POST /api/auth/login          → Connexion (retourne un JWT)\n- GET  /api/auth/profile        → Profil (protégé JWT)\n- POST /api/contribution        → Créer une contribution (JWT requis)\n- GET  /api/contribution        → Lister mes contributions (JWT requis)\n- PATCH /api/contribution/:id   → Modifier le montant (JWT requis)\n- DELETE /api/contribution/:id  → Annuler une contribution (JWT requis)\n- POST /api/payment/intent      → Créer un PaymentIntent (JWT requis)\n- GET  /api/payment/contributions → Historique paiements (JWT requis)\n- POST /api/payment/webhook     → Webhook Stripe (public)\n- PATCH /api/campagnes/:id/moderer → Modérer une campagne (ADMINISTRATEUR)\n\nDocumentation Swagger : http://localhost:3000/api/docs",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -970,7 +970,7 @@
       "name": "Payment",
       "item": [
         {
-          "name": "POST /api/payment/setup-contribution - Préparer le paiement",
+          "name": "POST /api/contribution - Préparer le paiement",
           "request": {
             "method": "POST",
             "header": [
@@ -996,6 +996,15 @@
                 "exec": [
                   "pm.test('Status 201 setup contribution', function () {",
                   "  pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "pm.test('Réponse contribution standard', function () {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json).to.have.property('statusCode');",
+                  "  pm.expect(json.statusCode).to.equal(201);",
+                  "  pm.expect(json).to.have.property('message');",
+                  "  pm.expect(json.message).to.equal('Contribution créée avec succès');",
+                  "  pm.expect(json).to.have.property('data');",
                   "});",
                   "",
                   "const data = pm.response.json().data || {};",

@@ -3,9 +3,9 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { ContributionService } from './contribution.service';
 import { Contribution } from './entities/contribution.entity';
-import { CampagneEntity, StatutCampagne } from '@projet1/campagnes/domain/campagne.entity';
 import { User } from '../auth/entities/user.entity';
 import { PaymentService } from '../payment/payment.service';
+import { ProjectsApiClient } from '../projects/projects-api.client';
 
 const mockRepo = () => ({
   findOne: jest.fn(),
@@ -18,12 +18,12 @@ const mockRepo = () => ({
 describe('ContributionService', () => {
   let service: ContributionService;
   let contributionRepo: ReturnType<typeof mockRepo>;
-  let campagneRepo: ReturnType<typeof mockRepo>;
   let userRepo: ReturnType<typeof mockRepo>;
   let paymentService: jest.Mocked<Pick<PaymentService, 'refundContribution'>>;
+  let projectsApiClient: jest.Mocked<Pick<ProjectsApiClient, 'getCampagneById'>>;
 
-  const activeCampagne = { id: 'camp-uuid-1', statut: StatutCampagne.ACTIVE } as CampagneEntity;
-  const closedCampagne = { id: 'camp-uuid-2', statut: StatutCampagne.ECHOUEE } as CampagneEntity;
+  const activeCampagne = { id: 'camp-uuid-1', statut: 'ACTIVE' };
+  const closedCampagne = { id: 'camp-uuid-2', statut: 'ECHOUEE' };
   const user = { id: 'user-uuid-1' } as User;
 
   beforeEach(async () => {
@@ -31,7 +31,6 @@ describe('ContributionService', () => {
       providers: [
         ContributionService,
         { provide: getRepositoryToken(Contribution), useFactory: mockRepo },
-        { provide: getRepositoryToken(CampagneEntity), useFactory: mockRepo },
         { provide: getRepositoryToken(User), useFactory: mockRepo },
         {
           provide: PaymentService,
@@ -39,14 +38,20 @@ describe('ContributionService', () => {
             refundContribution: jest.fn().mockResolvedValue(undefined),
           },
         },
+        {
+          provide: ProjectsApiClient,
+          useValue: {
+            getCampagneById: jest.fn(),
+          },
+        },
       ],
     }).compile();
 
     service = module.get(ContributionService);
     contributionRepo = module.get(getRepositoryToken(Contribution));
-    campagneRepo = module.get(getRepositoryToken(CampagneEntity));
     userRepo = module.get(getRepositoryToken(User));
     paymentService = module.get(PaymentService);
+    projectsApiClient = module.get(ProjectsApiClient);
   });
 
   afterEach(() => jest.clearAllMocks());
@@ -61,34 +66,34 @@ describe('ContributionService', () => {
 
     it('crée une contribution pour une campagne ACTIVE', async () => {
       const contrib = { id: 'c-uuid-1', montant: 100 } as Contribution;
-      campagneRepo.findOne.mockResolvedValue(activeCampagne);
+      projectsApiClient.getCampagneById.mockResolvedValue(activeCampagne);
       userRepo.findOne.mockResolvedValue(user);
       contributionRepo.create.mockReturnValue(contrib);
       contributionRepo.save.mockResolvedValue(contrib);
 
       const result = await service.create('user-uuid-1', dto);
 
-      expect(campagneRepo.findOne).toHaveBeenCalledWith({ where: { id: 'camp-uuid-1' } });
+      expect(projectsApiClient.getCampagneById).toHaveBeenCalledWith('camp-uuid-1');
       expect(userRepo.findOne).toHaveBeenCalledWith({ where: { id: 'user-uuid-1' } });
       expect(contributionRepo.save).toHaveBeenCalled();
       expect(result).toEqual(contrib);
     });
 
     it('lève NotFoundException si la campagne est introuvable', async () => {
-      campagneRepo.findOne.mockResolvedValue(null);
+      projectsApiClient.getCampagneById.mockRejectedValue(new NotFoundException());
 
       await expect(service.create('user-uuid-1', dto)).rejects.toThrow(NotFoundException);
       expect(contributionRepo.save).not.toHaveBeenCalled();
     });
 
     it('lève BadRequestException si la campagne n\'est pas ACTIVE (RG3)', async () => {
-      campagneRepo.findOne.mockResolvedValue(closedCampagne);
+      projectsApiClient.getCampagneById.mockResolvedValue(closedCampagne);
 
       await expect(service.create('user-uuid-1', dto)).rejects.toThrow(BadRequestException);
     });
 
     it('lève NotFoundException si l\'utilisateur est introuvable', async () => {
-      campagneRepo.findOne.mockResolvedValue(activeCampagne);
+      projectsApiClient.getCampagneById.mockResolvedValue(activeCampagne);
       userRepo.findOne.mockResolvedValue(null);
 
       await expect(service.create('user-uuid-1', dto)).rejects.toThrow(NotFoundException);
@@ -101,11 +106,12 @@ describe('ContributionService', () => {
       id: 'c-uuid-1',
       montant: 50,
       contributeur: user,
-      campagne: activeCampagne,
+      campagneId: 'camp-uuid-1',
     } as unknown as Contribution;
 
     it('met à jour le montant si campagne ACTIVE et contributeur owner', async () => {
       contributionRepo.findOne.mockResolvedValue(existingContrib);
+      projectsApiClient.getCampagneById.mockResolvedValue(activeCampagne);
       contributionRepo.save.mockResolvedValue({ ...existingContrib, montant: 200 } as Contribution);
 
       const result = await service.update('user-uuid-1', 'c-uuid-1', { montant: 200 });
@@ -131,8 +137,9 @@ describe('ContributionService', () => {
     });
 
     it('lève BadRequestException si la campagne n\'est plus ACTIVE (RG3)', async () => {
-      const contrib = { ...existingContrib, campagne: closedCampagne } as unknown as Contribution;
+      const contrib = { ...existingContrib, campagneId: 'camp-uuid-2' } as unknown as Contribution;
       contributionRepo.findOne.mockResolvedValue(contrib);
+      projectsApiClient.getCampagneById.mockResolvedValue(closedCampagne);
 
       await expect(service.update('user-uuid-1', 'c-uuid-1', { montant: 200 })).rejects.toThrow(
         BadRequestException,
@@ -145,11 +152,12 @@ describe('ContributionService', () => {
     const existingContrib = {
       id: 'c-uuid-1',
       contributeur: user,
-      campagne: activeCampagne,
+      campagneId: 'camp-uuid-1',
     } as unknown as Contribution;
 
     it('annule la contribution si campagne ACTIVE et owner', async () => {
       contributionRepo.findOne.mockResolvedValue(existingContrib);
+      projectsApiClient.getCampagneById.mockResolvedValue(activeCampagne);
       contributionRepo.remove.mockResolvedValue(existingContrib);
 
       await expect(service.remove('user-uuid-1', 'c-uuid-1')).resolves.toBeUndefined();
@@ -166,8 +174,9 @@ describe('ContributionService', () => {
     });
 
     it('lève BadRequestException si campagne non ACTIVE (RG3)', async () => {
-      const contrib = { ...existingContrib, campagne: closedCampagne } as unknown as Contribution;
+      const contrib = { ...existingContrib, campagneId: 'camp-uuid-2' } as unknown as Contribution;
       contributionRepo.findOne.mockResolvedValue(contrib);
+      projectsApiClient.getCampagneById.mockResolvedValue(closedCampagne);
 
       await expect(service.remove('user-uuid-1', 'c-uuid-1')).rejects.toThrow(BadRequestException);
       expect(paymentService.refundContribution).not.toHaveBeenCalled();

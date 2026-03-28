@@ -11,7 +11,7 @@ import { ConfigService } from '@nestjs/config';
 import Stripe from 'stripe';
 import { Transaction } from './entities/transaction.entity';
 import { Contribution } from '../contribution/entities/contribution.entity';
-import { CampagneEntity, StatutCampagne } from '@projet1/campagnes/domain/campagne.entity';
+import { ProjectsApiClient } from '../projects/projects-api.client';
 
 @Injectable()
 export class PaymentService {
@@ -23,8 +23,7 @@ export class PaymentService {
     private readonly transactionRepository: Repository<Transaction>,
     @InjectRepository(Contribution)
     private readonly contributionRepository: Repository<Contribution>,
-    @InjectRepository(CampagneEntity)
-    private readonly campagneRepository: Repository<CampagneEntity>,
+    private readonly projectsApiClient: ProjectsApiClient,
     private readonly configService: ConfigService,
   ) {
     const stripeKey = this.configService.get<string>('STRIPE_SECRET_KEY') || 'sk_test_dummy';
@@ -41,7 +40,7 @@ export class PaymentService {
 
     const contribution = await this.contributionRepository.findOne({
       where: { id: contributionId },
-      relations: ['contributeur', 'campagne'],
+      relations: ['contributeur'],
     });
     if (!contribution) {
       throw new NotFoundException(`Contribution ${contributionId} introuvable`);
@@ -50,16 +49,13 @@ export class PaymentService {
       throw new ForbiddenException('Vous ne pouvez payer que vos propres contributions');
     }
 
-    const contributionCampagneId = contribution.campagneId || contribution.campagne?.id;
+    const contributionCampagneId = contribution.campagneId;
     if (contributionCampagneId !== campagneId) {
       throw new BadRequestException('La contribution ne correspond pas à la campagne demandée');
     }
 
-    const campagne = await this.campagneRepository.findOne({ where: { id: campagneId } });
-    if (!campagne) {
-      throw new NotFoundException(`Campagne ${campagneId} introuvable`);
-    }
-    if (campagne.statut !== StatutCampagne.ACTIVE) {
+    const campagne = await this.projectsApiClient.getCampagneById(campagneId);
+    if (campagne.statut !== 'ACTIVE') {
       throw new BadRequestException(`La campagne n'est pas active (statut: ${campagne.statut})`);
     }
     if (montant <= 0) {

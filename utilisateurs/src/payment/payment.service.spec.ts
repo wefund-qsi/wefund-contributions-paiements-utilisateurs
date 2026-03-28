@@ -5,7 +5,7 @@ import { ConfigService } from '@nestjs/config';
 import { PaymentService } from './payment.service';
 import { Transaction } from './entities/transaction.entity';
 import { Contribution } from '../contribution/entities/contribution.entity';
-import { CampagneEntity, StatutCampagne } from '@projet1/campagnes/domain/campagne.entity';
+import { ProjectsApiClient } from '../projects/projects-api.client';
 
 // Stub Stripe pour éviter tout appel réseau
 jest.mock('stripe', () => {
@@ -33,23 +33,22 @@ describe('PaymentService', () => {
   let service: PaymentService;
   let transactionRepo: ReturnType<typeof mockRepo>;
   let contributionRepo: ReturnType<typeof mockRepo>;
-  let campagneRepo: ReturnType<typeof mockRepo>;
+  let projectsApiClient: jest.Mocked<Pick<ProjectsApiClient, 'getCampagneById'>>;
 
   const activeCampagne = {
     id: 'camp-uuid-1',
-    statut: StatutCampagne.ACTIVE,
-  } as CampagneEntity;
+    statut: 'ACTIVE',
+  };
 
   const closedCampagne = {
     id: 'camp-uuid-2',
-    statut: StatutCampagne.ECHOUEE,
-  } as CampagneEntity;
+    statut: 'ECHOUEE',
+  };
 
   const ownedContribution = {
     id: 'c-1',
     montant: 150,
     campagneId: 'camp-uuid-1',
-    campagne: activeCampagne,
     contributeur: { id: 'user-1' },
   } as unknown as Contribution;
 
@@ -75,10 +74,15 @@ describe('PaymentService', () => {
         PaymentService,
         { provide: getRepositoryToken(Transaction), useFactory: mockRepo },
         { provide: getRepositoryToken(Contribution), useFactory: mockRepo },
-        { provide: getRepositoryToken(CampagneEntity), useFactory: mockRepo },
         {
           provide: ConfigService,
           useValue: { get: jest.fn().mockReturnValue('sk_test_dummy') },
+        },
+        {
+          provide: ProjectsApiClient,
+          useValue: {
+            getCampagneById: jest.fn(),
+          },
         },
       ],
     }).compile();
@@ -86,7 +90,7 @@ describe('PaymentService', () => {
     service = module.get(PaymentService);
     transactionRepo = module.get(getRepositoryToken(Transaction));
     contributionRepo = module.get(getRepositoryToken(Contribution));
-    campagneRepo = module.get(getRepositoryToken(CampagneEntity));
+    projectsApiClient = module.get(ProjectsApiClient);
   });
 
   afterEach(() => jest.clearAllMocks());
@@ -132,7 +136,7 @@ describe('PaymentService', () => {
         ...ownedContribution,
         campagneId: 'camp-uuid-X',
       });
-      campagneRepo.findOne.mockResolvedValue(null);
+      projectsApiClient.getCampagneById.mockRejectedValue(new NotFoundException());
 
       await expect(
         service.createPaymentIntent('c-1', 150, 'camp-uuid-X', 'user-1'),
@@ -144,7 +148,7 @@ describe('PaymentService', () => {
         ...ownedContribution,
         campagneId: 'camp-uuid-2',
       });
-      campagneRepo.findOne.mockResolvedValue(closedCampagne);
+      projectsApiClient.getCampagneById.mockResolvedValue(closedCampagne);
 
       await expect(
         service.createPaymentIntent('c-1', 150, 'camp-uuid-2', 'user-1'),
@@ -153,7 +157,7 @@ describe('PaymentService', () => {
 
     it('lève BadRequestException si le montant est nul ou négatif', async () => {
       contributionRepo.findOne.mockResolvedValue(ownedContribution);
-      campagneRepo.findOne.mockResolvedValue(activeCampagne);
+      projectsApiClient.getCampagneById.mockResolvedValue(activeCampagne);
 
       await expect(
         service.createPaymentIntent('c-1', 0, 'camp-uuid-1', 'user-1'),
@@ -162,7 +166,7 @@ describe('PaymentService', () => {
 
     it('lève BadRequestException si montant différent de la contribution', async () => {
       contributionRepo.findOne.mockResolvedValue(ownedContribution);
-      campagneRepo.findOne.mockResolvedValue(activeCampagne);
+      projectsApiClient.getCampagneById.mockResolvedValue(activeCampagne);
 
       await expect(
         service.createPaymentIntent('c-1', 100, 'camp-uuid-1', 'user-1'),
@@ -171,7 +175,7 @@ describe('PaymentService', () => {
 
     it('lève BadRequestException si une transaction est déjà en cours', async () => {
       contributionRepo.findOne.mockResolvedValue(ownedContribution);
-      campagneRepo.findOne.mockResolvedValue(activeCampagne);
+      projectsApiClient.getCampagneById.mockResolvedValue(activeCampagne);
       transactionRepo.findOne.mockResolvedValue(txAuthorized);
 
       await expect(
@@ -181,7 +185,7 @@ describe('PaymentService', () => {
 
     it('crée un PaymentIntent et une Transaction en DB (séquestre)', async () => {
       contributionRepo.findOne.mockResolvedValue(ownedContribution);
-      campagneRepo.findOne.mockResolvedValue(activeCampagne);
+      projectsApiClient.getCampagneById.mockResolvedValue(activeCampagne);
       transactionRepo.findOne.mockResolvedValue(null);
       const tx = { id: 'tx-uuid-1' } as Transaction;
       transactionRepo.create.mockReturnValue(tx);
