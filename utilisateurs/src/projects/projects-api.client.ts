@@ -34,6 +34,7 @@ export class ProjectsApiClient {
   private readonly timeoutMs: number;
   private readonly moderationPath: string;
   private readonly moderationFallbackPath?: string;
+  private readonly submitPath: string;
 
   constructor(
     private readonly httpService: HttpService,
@@ -43,6 +44,7 @@ export class ProjectsApiClient {
     this.timeoutMs = Number(this.configService.get<string>('PROJECTS_API_TIMEOUT_MS') || 5000);
     this.moderationPath = this.configService.get<string>('PROJECTS_MODERATION_PATH') || '/campagnes/:id/moderer';
     this.moderationFallbackPath = this.configService.get<string>('PROJECTS_MODERATION_FALLBACK_PATH') || '/campagnes/:id';
+    this.submitPath = this.configService.get<string>('PROJECTS_SUBMIT_PATH') || '/campagnes/:id/soumettre';
     this.logger.log(`[ProjectsApi] baseUrl=${this.baseUrl} timeoutMs=${this.timeoutMs}`);
   }
 
@@ -67,10 +69,15 @@ export class ProjectsApiClient {
     try {
       const path = this.resolvePath(this.moderationPath, campagneId);
       const headers = authorizationHeader ? { Authorization: authorizationHeader } : undefined;
+      // Adapter le payload selon le chemin configuré : certains services attendent { statut }
+      const body = path.includes('moderation')
+        ? { statut: decision === 'ACCEPTEE' ? 'ACTIVE' : 'REFUSEE' }
+        : { decision };
+
       const { data } = await firstValueFrom(
         this.httpService.patch<{ id: string; statut: CampagneStatut | string }>(
           `${this.baseUrl}${path}`,
-          { decision },
+          body,
           {
             headers,
             timeout: this.timeoutMs,
@@ -83,6 +90,26 @@ export class ProjectsApiClient {
         return this.tryModerationFallback(campagneId, decision, authorizationHeader);
       }
       this.throwMappedHttpError(error, `Moderation campagne ${campagneId}`);
+    }
+  }
+
+  async submitCampagne(campagneId: string, authorizationHeader?: string): Promise<{ id: string; statut: CampagneStatut | string }> {
+    try {
+      const path = this.resolvePath(this.submitPath, campagneId);
+      const headers = authorizationHeader ? { Authorization: authorizationHeader } : undefined;
+      const { data } = await firstValueFrom(
+        this.httpService.post<{ id: string; statut: CampagneStatut | string }>(
+          `${this.baseUrl}${path}`,
+          {},
+          {
+            headers,
+            timeout: this.timeoutMs,
+          },
+        ),
+      );
+      return data;
+    } catch (error) {
+      this.throwMappedHttpError(error, `Soumission campagne ${campagneId}`);
     }
   }
 

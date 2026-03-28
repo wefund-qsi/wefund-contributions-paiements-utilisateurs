@@ -66,6 +66,25 @@ export class CampaignEventsConsumer {
     this.logger.log(
       `[campaign.moderated] campagneId=${data?.campagneId} statut=${data?.statut}`,
     );
-    // TODO: mettre à jour l'état local si nécessaire quand Projet 1 publie ce topic
+    if (!data?.campagneId) {
+      this.logger.warn('[campaign.moderated] Payload invalide : campagneId manquant');
+      return;
+    }
+    // Si la campagne est REFUSEE, lancer les refunds pour cette campagne
+    if (data.statut === 'REFUSEE') {
+      this.logger.log(`[campaign.moderated] campagneId=${data.campagneId} -> lancement refunds`);
+      await this.paymentService.refundAllForCampaign(data.campagneId);
+    }
+    // Si ACTIVE on ne fait rien côté refunds (les contributions restent)
+  }
+
+  @EventPattern('campaign.submitted')
+  async handleCampaignSubmitted(@Payload() data: any): Promise<void> {
+    this.logger.log(`[campaign.submitted] campagneId=${data?.campagneId}`);
+    if (!data?.campagneId) {
+      this.logger.warn('[campaign.submitted] Payload invalide : campagneId manquant');
+      return;
+    }
+    // Optionnel: mettre à jour l'état local, envoyer notifications, etc.
   }
 }

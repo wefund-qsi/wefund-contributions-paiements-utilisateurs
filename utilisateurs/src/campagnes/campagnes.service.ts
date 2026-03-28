@@ -37,4 +37,15 @@ export class CampagnesService {
     );
     return saved;
   }
+
+  async soumettre(
+    campagneId: string,
+    userRole: string,
+    authorizationHeader?: string,
+  ): Promise<CampagneRow> {
+    // Optionnel: vérifier que l'utilisateur est bien le porteur si nécessaire
+    const saved = await this.projectsApiClient.submitCampagne(campagneId, authorizationHeader);
+    this.logger.log(`[soumettre] campagneId=${campagneId} -> statut=${saved.statut}`);
+    return saved;
+  }
 }
