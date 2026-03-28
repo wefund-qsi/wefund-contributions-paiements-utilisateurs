@@ -7,7 +7,12 @@ import { AppModule } from './app.module';
 const logger = new Logger('Bootstrap');
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create(AppModule, { rawBody: true });
+
+  const kafkaBrokers = (process.env.KAFKA_BROKERS || 'redpanda:9092')
+    .split(',')
+    .map((broker) => broker.trim())
+    .filter(Boolean);
 
   // Kafka consumer — écoute campaign.closed.success, campaign.closed.failed, campaign.moderated
   app.connectMicroservice<MicroserviceOptions>({
@@ -15,7 +20,7 @@ async function bootstrap() {
     options: {
       client: {
         clientId: 'wefund-contributions-service',
-        brokers: [(process.env.KAFKA_BROKERS || 'localhost:19092')],
+        brokers: kafkaBrokers,
       },
       consumer: {
         groupId: 'wefund-contributions-consumer',
@@ -51,6 +56,6 @@ async function bootstrap() {
 
   logger.log(`Microservice Projet 2 démarré sur : http://localhost:${port}/api`);
   logger.log(`Swagger disponible sur : http://localhost:${port}/api/docs`);
-  logger.log(`Kafka consumer connecté à : ${process.env.KAFKA_BROKERS || 'redpanda:9092'}`);
+  logger.log(`Kafka consumer connecté à : ${kafkaBrokers.join(', ')}`);
 }
 bootstrap();

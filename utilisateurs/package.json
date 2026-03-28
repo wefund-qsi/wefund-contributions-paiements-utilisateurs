@@ -76,7 +76,7 @@
       "^.+\\.(t|j)s$": ["ts-jest", { "isolatedModules": true }]
     },
     "moduleNameMapper": {
-      "@projet1/(.*)": "<rootDir>/../../../wefund-projects-service/src/$1"
+      "@projet1/(.*)": "<rootDir>/../../wefund-projects-service/src/$1"
     },
     "modulePaths": ["<rootDir>/../node_modules"],
     "collectCoverageFrom": [

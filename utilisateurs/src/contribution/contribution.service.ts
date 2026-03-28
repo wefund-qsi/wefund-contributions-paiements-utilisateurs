@@ -10,6 +10,7 @@ import { Repository } from 'typeorm';
 import { Contribution } from './entities/contribution.entity';
 import { CampagneEntity, StatutCampagne } from '@projet1/campagnes/domain/campagne.entity';
 import { User } from '../auth/entities/user.entity';
+import { PaymentService } from '../payment/payment.service';
 import { CreateContributionDto } from './dtos/create-contribution.dto';
 import { UpdateContributionDto } from './dtos/update-contribution.dto';
 
@@ -24,6 +25,7 @@ export class ContributionService {
     private readonly campagneRepository: Repository<CampagneEntity>,
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
+    private readonly paymentService: PaymentService,
   ) {}
 
   async create(userId: string, dto: CreateContributionDto): Promise<Contribution> {
@@ -105,6 +107,7 @@ export class ContributionService {
       throw new BadRequestException('La campagne n\'est plus active, annulation impossible (RG3)');
     }
 
+    await this.paymentService.refundContribution(contribution.id, userId);
     await this.contributionRepository.remove(contribution);
     this.logger.log(`[remove] Contribution ${id} annulée`);
   }

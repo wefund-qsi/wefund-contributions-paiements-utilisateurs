@@ -5,6 +5,7 @@ import { ContributionService } from './contribution.service';
 import { Contribution } from './entities/contribution.entity';
 import { CampagneEntity, StatutCampagne } from '@projet1/campagnes/domain/campagne.entity';
 import { User } from '../auth/entities/user.entity';
+import { PaymentService } from '../payment/payment.service';
 
 const mockRepo = () => ({
   findOne: jest.fn(),
@@ -19,6 +20,7 @@ describe('ContributionService', () => {
   let contributionRepo: ReturnType<typeof mockRepo>;
   let campagneRepo: ReturnType<typeof mockRepo>;
   let userRepo: ReturnType<typeof mockRepo>;
+  let paymentService: jest.Mocked<Pick<PaymentService, 'refundContribution'>>;
 
   const activeCampagne = { id: 'camp-uuid-1', statut: StatutCampagne.ACTIVE } as CampagneEntity;
   const closedCampagne = { id: 'camp-uuid-2', statut: StatutCampagne.ECHOUEE } as CampagneEntity;
@@ -31,6 +33,12 @@ describe('ContributionService', () => {
         { provide: getRepositoryToken(Contribution), useFactory: mockRepo },
         { provide: getRepositoryToken(CampagneEntity), useFactory: mockRepo },
         { provide: getRepositoryToken(User), useFactory: mockRepo },
+        {
+          provide: PaymentService,
+          useValue: {
+            refundContribution: jest.fn().mockResolvedValue(undefined),
+          },
+        },
       ],
     }).compile();
 
@@ -38,6 +46,7 @@ describe('ContributionService', () => {
     contributionRepo = module.get(getRepositoryToken(Contribution));
     campagneRepo = module.get(getRepositoryToken(CampagneEntity));
     userRepo = module.get(getRepositoryToken(User));
+    paymentService = module.get(PaymentService);
   });
 
   afterEach(() => jest.clearAllMocks());
@@ -144,6 +153,7 @@ describe('ContributionService', () => {
       contributionRepo.remove.mockResolvedValue(existingContrib);
 
       await expect(service.remove('user-uuid-1', 'c-uuid-1')).resolves.toBeUndefined();
+      expect(paymentService.refundContribution).toHaveBeenCalledWith('c-uuid-1', 'user-uuid-1');
       expect(contributionRepo.remove).toHaveBeenCalledWith(existingContrib);
     });
 
@@ -151,6 +161,7 @@ describe('ContributionService', () => {
       contributionRepo.findOne.mockResolvedValue(existingContrib);
 
       await expect(service.remove('autre-user', 'c-uuid-1')).rejects.toThrow(ForbiddenException);
+      expect(paymentService.refundContribution).not.toHaveBeenCalled();
       expect(contributionRepo.remove).not.toHaveBeenCalled();
     });
 
@@ -159,6 +170,7 @@ describe('ContributionService', () => {
       contributionRepo.findOne.mockResolvedValue(contrib);
 
       await expect(service.remove('user-uuid-1', 'c-uuid-1')).rejects.toThrow(BadRequestException);
+      expect(paymentService.refundContribution).not.toHaveBeenCalled();
     });
   });
 
