@@ -1,4 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { BadRequestException, ForbiddenException } from '@nestjs/common';
 import { TypeOrmModule, getRepositoryToken } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
 import { ContributionService } from '../src/contribution/contribution.service';
@@ -115,5 +116,65 @@ describe('ContributionService (integration)', () => {
 
     const stillThere = await contributionRepo.findOne({ where: { id: contribution.id } });
     expect(stillThere).toBeNull();
+  });
+
+  it('refuse create si la campagne nest pas ACTIVE', async () => {
+    const user = await userRepo.save({
+      nom: 'NoActive',
+      prenom: 'Case',
+      username: 'inactive-campaign-create',
+    });
+
+    projectsApiClient.getCampagneById.mockResolvedValueOnce({ id: 'camp-closed', statut: 'ECHOUEE' });
+
+    await expect(
+      service.create(user.id, { campagneId: 'camp-closed', montant: 50 }),
+    ).rejects.toThrow(BadRequestException);
+  });
+
+  it('refuse update si utilisateur non proprietaire', async () => {
+    const owner = await userRepo.save({
+      nom: 'Owner',
+      prenom: 'One',
+      username: 'owner-update',
+    });
+    const otherUser = await userRepo.save({
+      nom: 'Other',
+      prenom: 'User',
+      username: 'other-update',
+    });
+
+    const contribution = await contributionRepo.save(
+      contributionRepo.create({
+        montant: 60,
+        campagneId: 'camp-1',
+        contributeur: owner,
+      }),
+    );
+
+    await expect(
+      service.update(otherUser.id, contribution.id, { montant: 99 }),
+    ).rejects.toThrow(ForbiddenException);
+  });
+
+  it('refuse remove si campagne fermee et ne declenche pas refund', async () => {
+    const user = await userRepo.save({
+      nom: 'Closed',
+      prenom: 'Campaign',
+      username: 'closed-remove',
+    });
+
+    const contribution = await contributionRepo.save(
+      contributionRepo.create({
+        montant: 70,
+        campagneId: 'camp-closed',
+        contributeur: user,
+      }),
+    );
+
+    projectsApiClient.getCampagneById.mockResolvedValueOnce({ id: 'camp-closed', statut: 'TERMINEE' });
+
+    await expect(service.remove(user.id, contribution.id)).rejects.toThrow(BadRequestException);
+    expect(paymentService.refundContribution).not.toHaveBeenCalled();
   });
 });

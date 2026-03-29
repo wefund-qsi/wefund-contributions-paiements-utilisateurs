@@ -1,4 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { ConflictException } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
 import { TypeOrmModule, getRepositoryToken } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
@@ -104,5 +105,19 @@ describe('Auth flow (integration)', () => {
     expect(login.statusCode).toBe(200);
     expect(typeof login.data.access_token).toBe('string');
     expect(login.data.access_token.length).toBeGreaterThan(20);
+  });
+
+  it('refuse signup si le username existe deja', async () => {
+    const payload = {
+      prenom: 'Same',
+      nom: 'User',
+      username: 'duplicate-signup',
+      password: 'P@ssw0rd',
+      role: 'USER' as const,
+    };
+
+    await controller.postSignup(payload);
+
+    await expect(controller.postSignup(payload)).rejects.toThrow(ConflictException);
   });
 });
