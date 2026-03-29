@@ -1,4 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { BadRequestException } from '@nestjs/common';
 import { TypeOrmModule, getRepositoryToken } from '@nestjs/typeorm';
 import { ConfigService } from '@nestjs/config';
 import { DataSource, Repository } from 'typeorm';
@@ -141,5 +142,56 @@ describe('PaymentService (integration)', () => {
     const refreshed = await transactionRepo.findOne({ where: { id: tx.id } });
     expect(refreshed).not.toBeNull();
     expect(refreshed!.statut).toBe('refunded');
+  });
+
+  it('refuse createPaymentIntent si montant different de la contribution', async () => {
+    const user = await userRepo.save({
+      nom: 'Mismatch',
+      prenom: 'Amount',
+      username: 'amount-mismatch',
+    });
+
+    const contribution = await contributionRepo.save(
+      contributionRepo.create({
+        montant: 150,
+        campagneId: 'camp-1',
+        contributeur: user,
+      }),
+    );
+
+    await expect(service.createPaymentIntent(contribution.id, 140, 'camp-1', user.id)).rejects.toThrow(
+      BadRequestException,
+    );
+  });
+
+  it('refuse une seconde transaction si une transaction pending existe deja', async () => {
+    const user = await userRepo.save({
+      nom: 'Duplicate',
+      prenom: 'Pending',
+      username: 'duplicate-pending',
+    });
+
+    const contribution = await contributionRepo.save(
+      contributionRepo.create({
+        montant: 100,
+        campagneId: 'camp-1',
+        contributeur: user,
+      }),
+    );
+
+    await transactionRepo.save(
+      transactionRepo.create({
+        paymentIntentId: 'pi_existing_pending',
+        montant: 100,
+        statut: 'pending',
+        contributionId: contribution.id,
+        campagneId: 'camp-1',
+        contributeurId: user.id,
+      }),
+    );
+
+    await expect(service.createPaymentIntent(contribution.id, 100, 'camp-1', user.id)).rejects.toThrow(
+      BadRequestException,
+    );
   });
 });
