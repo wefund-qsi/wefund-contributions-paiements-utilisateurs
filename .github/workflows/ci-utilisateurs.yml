@@ -1,0 +1,73 @@
+name: CI - Utilisateurs
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'utilisateurs/**'
+      - '.github/workflows/ci-utilisateurs.yml'
+  pull_request:
+    paths:
+      - 'utilisateurs/**'
+      - '.github/workflows/ci-utilisateurs.yml'
+
+jobs:
+  quality:
+    name: Lint, Tests et Build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: password
+          POSTGRES_DB: wefund_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d wefund_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    defaults:
+      run:
+        working-directory: utilisateurs
+
+    env:
+      NODE_ENV: test
+      DATABASE_HOST: localhost
+      DATABASE_PORT: 5432
+      DATABASE_USER: postgres
+      DATABASE_PASSWORD: password
+      DATABASE_NAME: wefund_test
+      KAFKA_ENABLED: 'false'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: utilisateurs/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint (non destructif)
+        run: npx eslint "{src,apps,libs,test}/**/*.ts"
+
+      - name: Unit tests
+        run: npm run test -- --ci
+
+      - name: Integration tests
+        run: npm run test:integration -- --ci
+
+      - name: Build
+        run: npm run build
