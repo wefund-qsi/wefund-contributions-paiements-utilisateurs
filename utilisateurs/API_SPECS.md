@@ -9,8 +9,8 @@
 - Content-Type attendu dans l'en-tête `Content-Type: application/json` pour tous les routes
 - Routes publiques:
     - `POST /auth/signup`
-  - `POST /auth/login`
-  - `GET /`
+    - `POST /auth/login`
+    - `GET /`
     - `POST /payment/webhook`
 - Routes protégées
     - `GET /auth/profile`
@@ -20,6 +20,8 @@
     - `DELETE /contribution/:id`
     - `POST /payment/intent`
     - `GET /payment/contributions`
+    - `PATCH /campagnes/:id/moderer`
+    - `POST /campagnes/:id/soumettre`
 
 ## Modèles JSON
 
@@ -45,37 +47,37 @@
 ### SignupResult
 ```json
 {
-    "statusCode":"integer",
-    "message":"string",
-    "data":{
-        "id":"string",
-        "nom":"string",
-        "prenom":"string",
-        "username":"string",
-        "role":"string"
+    "statusCode": 201,
+    "message": "string",
+    "data": {
+        "id": "<uuid>",
+        "nom": "string",
+        "prenom": "string",
+        "username": "string",
+        "role": "string"
     },
-    "timestamp":"timestamp"
+    "timestamp": "<timestamp>"
 }
 ```
 
 ### LoginResult
 ```json
 {
-    "statusCode":"integer",
-    "message":"string",
-    "data":{
-        "access_token":"string"
+    "statusCode": 200,
+    "message": "string",
+    "data": {
+        "access_token": "string"
     },
-    "timestamp":"timestamp"
+    "timestamp": "<timestamp>"
 }
 ```
 
 ### ErrorResult
 ```json
 {
-    "statusCode":"integer",
-    "message":"string",
-    "error":"string"
+    "statusCode": "integer",
+    "message": "string",
+    "error": "string"
 }
 ```
 
@@ -106,52 +108,40 @@
 ### ContributionResult
 ```json
 {
-    "statusCode":201,
-    "message":"Contribution créée avec succès",
-    "data":{
-        "id":1,
-        "montant":50,
-        "campagne":{
-            "id":1,
-            "nom":"Campagne test",
-            "statut":"active"
-        },
-        "contributeur":{
-            "id":"<uuid>",
-            "username":"alice"
-        },
-        "timestamp":"<timestamp>"
+    "statusCode": 201,
+    "message": "Contribution créée avec succès",
+    "data": {
+        "id": "<uuid>",
+        "montant": 50,
+        "campagneId": "<uuid>",
+        "createdAt": "<timestamp>"
     },
-    "timestamp":"<timestamp>"
+    "timestamp": "<timestamp>"
 }
 ```
 
 ### ContributionListResult
 ```json
 {
-    "statusCode":200,
-    "message":"Contributions récupérées avec succès",
-    "data":[
+    "statusCode": 200,
+    "message": "Contributions récupérées avec succès",
+    "data": [
         {
-            "id":1,
-            "montant":50,
-            "campagne":{
-                "id":1,
-                "nom":"Campagne test",
-                "statut":"active"
-            },
-            "timestamp":"<timestamp>"
+            "id": "<uuid>",
+            "montant": 50,
+            "campagneId": "<uuid>",
+            "createdAt": "<timestamp>"
         }
     ],
-    "timestamp":"<timestamp>"
+    "timestamp": "<timestamp>"
 }
 ```
 
 ### PaymentIntentResult
 ```json
 {
-    "clientSecret":"<stripe_client_secret>",
-    "transactionId":"<uuid>"
+    "clientSecret": "<stripe_client_secret>",
+    "transactionId": "<uuid>"
 }
 ```
 
@@ -159,14 +149,14 @@
 ```json
 [
     {
-        "id":"<uuid>",
-        "paymentIntentId":"<stripe_payment_intent_id>",
-        "montant":50,
-        "statut":"pending",
-        "contributionId":1,
-        "contributeurId":"<uuid>",
-        "createdAt":"<timestamp>",
-        "updatedAt":"<timestamp>"
+        "id": "<uuid>",
+        "paymentIntentId": "<stripe_payment_intent_id>",
+        "montant": 50,
+        "statut": "pending",
+        "contributionId": "<uuid>",
+        "contributeurId": "<uuid>",
+        "createdAt": "<timestamp>",
+        "updatedAt": "<timestamp>"
     }
 ]
 ```
@@ -175,6 +165,13 @@
 ```json
 {
     "received": true
+}
+```
+
+### ModererCampagneRequest
+```json
+{
+    "decision": "ACCEPTEE"
 }
 ```
 
@@ -198,16 +195,16 @@ Responses:
 - `201 Created`
 ```json
 {
-    "statusCode":201,
-    "message":"User, auth and role created successfully",
-    "data":{
-        "id":"<uuid>",
-        "nom":"duval",
-        "prenom":"alice",
-        "username":"alice",
-        "role":"USER"
+    "statusCode": 201,
+    "message": "User, auth and role created successfully",
+    "data": {
+        "id": "<uuid>",
+        "nom": "duval",
+        "prenom": "alice",
+        "username": "alice",
+        "role": "USER"
     },
-    "timestamp":"<timestamp>"
+    "timestamp": "<timestamp>"
 }
 ```
 - `409 Conflict`: username déjà existant
@@ -228,12 +225,12 @@ Responses:
 - `200 OK`
 ```json
 {
-    "statusCode":200,
-    "message":"Login successful",
-    "data":{
-        "access_token":"<jwt>"
+    "statusCode": 200,
+    "message": "Login successful",
+    "data": {
+        "access_token": "<jwt>"
     },
-    "timestamp":"<timestamp>"
+    "timestamp": "<timestamp>"
 }
 ```
 - `401 Unauthorized`: mot de passe incorrect
@@ -283,31 +280,20 @@ Responses:
 - `201 Created`
 ```json
 {
-    "statusCode":201,
-    "message":"Contribution créée avec succès",
-    "data":{
-        "id":1,
-        "montant":50,
-        "campagne":{
-            "id":1,
-            "nom":"Campagne test",
-            "statut":"active",
-            "dateEcheance":"<timestamp>"
-        },
-        "contributeur":{
-            "id":"<uuid>",
-            "username":"alice"
-        },
-        "timestamp":"<timestamp>"
+    "statusCode": 201,
+    "message": "Contribution créée avec succès",
+    "data": {
+        "id": "<uuid>",
+        "montant": 50,
+        "campagneId": "<uuid>",
+        "createdAt": "<timestamp>"
     },
-    "timestamp":"<timestamp>"
+    "timestamp": "<timestamp>"
 }
 ```
 - `400 Bad Request`: montant invalide ou campagne non active
 - `401 Unauthorized`: token manquant ou invalide
 - `404 Not Found`: campagne ou utilisateur introuvable
-
-> **Note dev** : en local, si la variable d'environnement `MOCK_CONTRIBUTION_CAMPAIGN=true` est définie, une campagne mock active est créée automatiquement si elle n'existe pas en base. À ne pas utiliser en production.
 
 ### `GET /contribution`
 Retourne toutes les contributions de l'utilisateur connecté (token JWT requis).
@@ -319,25 +305,17 @@ Responses:
 - `200 OK`
 ```json
 {
-    "statusCode":200,
-    "message":"Contributions récupérées avec succès",
-    "data":[
+    "statusCode": 200,
+    "message": "Contributions récupérées avec succès",
+    "data": [
         {
-            "id":1,
-            "montant":50,
-            "campagne":{
-                "id":1,
-                "nom":"Campagne test",
-                "statut":"active",
-                "projet":{
-                    "id":1,
-                    "nom":"Projet test"
-                }
-            },
-            "timestamp":"<timestamp>"
+            "id": "<uuid>",
+            "montant": 50,
+            "campagneId": "<uuid>",
+            "createdAt": "<timestamp>"
         }
     ],
-    "timestamp":"<timestamp>"
+    "timestamp": "<timestamp>"
 }
 ```
 - `401 Unauthorized`: token manquant ou invalide
@@ -359,13 +337,15 @@ Responses:
 - `200 OK`
 ```json
 {
-    "statusCode":200,
-    "message":"Contribution mise à jour avec succès",
-    "data":{
-        "id":1,
-        "montant":150
+    "statusCode": 200,
+    "message": "Contribution mise à jour avec succès",
+    "data": {
+        "id": "<uuid>",
+        "montant": 150,
+        "campagneId": "<uuid>",
+        "createdAt": "<timestamp>"
     },
-    "timestamp":"<timestamp>"
+    "timestamp": "<timestamp>"
 }
 ```
 - `400 Bad Request`: montant invalide ou campagne non active
@@ -383,9 +363,9 @@ Responses:
 - `200 OK`
 ```json
 {
-    "statusCode":200,
-    "message":"Contribution annulée avec succès",
-    "timestamp":"<timestamp>"
+    "statusCode": 200,
+    "message": "Contribution annulée avec succès",
+    "timestamp": "<timestamp>"
 }
 ```
 - `400 Bad Request`: campagne non active
@@ -412,8 +392,8 @@ Responses:
 - `201 Created`
 ```json
 {
-    "clientSecret":"<stripe_client_secret>",
-    "transactionId":"<uuid>"
+    "clientSecret": "<stripe_client_secret>",
+    "transactionId": "<uuid>"
 }
 ```
 - `400 Bad Request`: montant invalide ou campagne non active
@@ -431,21 +411,23 @@ Responses:
 ```json
 [
     {
-        "id":"<uuid>",
-        "paymentIntentId":"<stripe_payment_intent_id>",
-        "montant":50,
-        "statut":"pending",
-        "contributionId":1,
-        "contributeurId":"<uuid>",
-        "createdAt":"<timestamp>",
-        "updatedAt":"<timestamp>"
+        "id": "<uuid>",
+        "paymentIntentId": "<stripe_payment_intent_id>",
+        "montant": 50,
+        "statut": "pending",
+        "contributionId": "<uuid>",
+        "contributeurId": "<uuid>",
+        "createdAt": "<timestamp>",
+        "updatedAt": "<timestamp>"
     }
 ]
 ```
 - `401 Unauthorized`: token manquant ou invalide
 
 ### `POST /payment/webhook`
-Endpoint Stripe public pour les notifications webhook.
+Endpoint Stripe public pour les notifications webhook. Traite les événements `payment_intent.succeeded` et `payment_intent.canceled` pour déclencher les remboursements automatiques ou manuels.
+
+> Ne pas appeler manuellement. Requiert la signature Stripe dans l'en-tête `stripe-signature`.
 
 Responses:
 - `200 OK`
@@ -454,3 +436,36 @@ Responses:
     "received": true
 }
 ```
+
+### `PATCH /campagnes/:id/moderer`
+Modère une campagne en attente (admin uniquement). Accepte ou refuse la campagne (token JWT requis).
+
+Request headers:
+- `Authorization: Bearer <jwt>`
+
+Request body:
+```json
+{
+    "decision": "ACCEPTEE"
+}
+```
+
+> `decision` : `ACCEPTEE` → campagne passe à `ACTIVE` | `REFUSEE` → campagne passe à `REFUSEE`
+
+Responses:
+- `200 OK`: campagne modérée avec succès
+- `401 Unauthorized`: token manquant ou invalide
+- `403 Forbidden`: non administrateur ou campagne pas en état `EN_ATTENTE`
+- `404 Not Found`: campagne introuvable
+
+### `POST /campagnes/:id/soumettre`
+Soumet une campagne pour modération. La campagne passe de `BROUILLON` à `EN_ATTENTE` (token JWT requis).
+
+Request headers:
+- `Authorization: Bearer <jwt>`
+
+Responses:
+- `200 OK`: campagne soumise avec succès
+- `401 Unauthorized`: token manquant ou invalide
+- `403 Forbidden`: non autorisé à soumettre cette campagne
+- `404 Not Found`: campagne introuvable
