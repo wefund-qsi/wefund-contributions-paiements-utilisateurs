@@ -7,7 +7,7 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiForbiddenResponse, ApiNotFoundResponse, ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiForbiddenResponse, ApiNotFoundResponse, ApiOkResponse, ApiOperation, ApiParam, ApiBody, ApiTags } from '@nestjs/swagger';
 import { AuthGuard } from '../auth/auth.guard';
 import { CampagnesService } from './campagnes.service';
 import { ModererCampagneDto } from './dto/moderer-campagne.dto';
@@ -31,6 +31,8 @@ export class CampagnesController {
       'Accessible aux administrateurs uniquement. ' +
       'Accepte ou refuse une campagne en attente de modération.',
   })
+  @ApiParam({ name: 'id', type: String, description: 'UUID de la campagne à modérer' })
+  @ApiBody({ type: ModererCampagneDto })
   @ApiOkResponse({ description: 'Campagne modérée avec succès' })
   @ApiForbiddenResponse({ description: 'Non administrateur ou campagne pas EN_ATTENTE' })
   @ApiNotFoundResponse({ description: 'Campagne introuvable' })
@@ -48,7 +50,11 @@ export class CampagnesController {
   }
 
   @Post(':id/soumettre')
-  @ApiOperation({ summary: 'Soumettre une campagne (passer BROUILLON → EN_ATTENTE)' })
+  @ApiOperation({ summary: 'Soumettre une campagne (Story 8)', description: 'Permet au porteur de soumettre sa campagne BROUILLON pour modération (→ EN_ATTENTE).' })
+  @ApiParam({ name: 'id', type: String, description: 'UUID de la campagne à soumettre' })
+  @ApiOkResponse({ description: 'Campagne soumise avec succès' })
+  @ApiForbiddenResponse({ description: 'Non autorisé à soumettre cette campagne' })
+  @ApiNotFoundResponse({ description: 'Campagne introuvable' })
   async soumettre(@Param('id') id: string, @Req() req: any) {
     return this.campagnesService.soumettre(id, req.user?.role, req.headers?.authorization);
   }

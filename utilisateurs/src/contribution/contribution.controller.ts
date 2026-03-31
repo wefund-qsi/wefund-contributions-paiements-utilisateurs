@@ -24,6 +24,7 @@ import { ContributionService } from './contribution.service';
 import { CreateContributionDto } from './dtos/create-contribution.dto';
 import { UpdateContributionDto } from './dtos/update-contribution.dto';
 import { AuthGuard } from '../auth/auth.guard';
+import { Contribution } from './entities/contribution.entity';
 
 interface AuthenticatedRequest extends ExpressRequest {
   user: { sub: string; username: string; role: string };
@@ -40,7 +41,7 @@ export class ContributionController {
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: 'Financer une campagne (Story 1)', description: 'Crée une contribution vers une campagne active (RG1, RG2, RG3).' })
   @ApiBody({ type: CreateContributionDto })
-  @ApiResponse({ status: 201, description: 'Contribution créée.' })
+  @ApiResponse({ status: 201, description: 'Contribution créée.', type: Contribution })
   @ApiResponse({ status: 400, description: 'Campagne inactive ou données invalides.' })
   @ApiResponse({ status: 404, description: 'Campagne ou utilisateur introuvable.' })
   async create(@Request() req: AuthenticatedRequest, @Body() dto: CreateContributionDto) {
@@ -55,7 +56,7 @@ export class ContributionController {
 
   @Get()
   @ApiOperation({ summary: 'Mes contributions (Story 2)', description: "Retourne toutes les contributions de l'utilisateur connecté." })
-  @ApiResponse({ status: 200, description: 'Liste des contributions.' })
+  @ApiResponse({ status: 200, description: 'Liste des contributions.', type: [Contribution] })
   async findAll(@Request() req: AuthenticatedRequest) {
     const contributions = await this.contributionService.findAllByUser(req.user.sub);
     return {
@@ -70,7 +71,7 @@ export class ContributionController {
   @ApiOperation({ summary: 'Modifier le montant (Story 5)', description: "Met à jour le montant d'une contribution. Campagne doit être active (RG3)." })
   @ApiParam({ name: 'id', type: String, description: 'UUID de la contribution' })
   @ApiBody({ type: UpdateContributionDto })
-  @ApiResponse({ status: 200, description: 'Contribution mise à jour.' })
+  @ApiResponse({ status: 200, description: 'Contribution mise à jour.', type: Contribution })
   @ApiResponse({ status: 400, description: 'Campagne inactive.' })
   @ApiResponse({ status: 403, description: 'Pas votre contribution.' })
   async update(
